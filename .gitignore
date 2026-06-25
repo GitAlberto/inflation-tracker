@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Environment
+.env
+.env.*
+
+# Données brutes (volumineuses, non versionnées)
+data/raw/**/*
+!data/raw/**/.gitkeep
+!data/raw/**/README.md
+data/processed/**/*
+!data/processed/.gitkeep
+!data/processed/README.md
+
+# Modèle sérialisé (trop lourd pour Git)
+model/*.pkl
+model/*.h5
+model/*.joblib
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Docker volumes
+postgres_data/
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
