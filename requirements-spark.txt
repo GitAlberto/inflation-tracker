@@ -1,0 +1,6 @@
+# Dépendances PySpark — Big Data Eurostat (C1)
+# Prérequis : Java 11 ou 17 installé sur la machine
+# Vérifier : java -version
+# Installer séparément : pip install -r requirements-spark.txt
+
+pyspark==3.5.1
