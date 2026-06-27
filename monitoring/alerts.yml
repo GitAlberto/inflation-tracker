@@ -1,0 +1,6 @@
+groups: []
+
+# Les règles d'alertes seront ajoutées en S5 (C11)
+# - MAE modèle trop élevée
+# - Latence API > 2s
+# - Taux d'erreurs > 5%

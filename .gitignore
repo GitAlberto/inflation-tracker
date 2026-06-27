@@ -54,4 +54,12 @@ postgres_data/
 # Coverage
 .coverage
 htmlcov/
-.pytest_cache/
+
+# Monitoring
+monitoring/logs/
+monitoring/grafana/data/
+
+# Spark
+spark-warehouse/
+derby.log
+metastore_db/
