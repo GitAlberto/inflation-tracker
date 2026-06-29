@@ -36,7 +36,6 @@ Issue GitHub : #4
 import os
 import io
 import logging
-from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -144,17 +143,15 @@ DB_URL = SAUrl.create(
 # =============================================================================
 # ÉTAPE 1 — EXTRACT
 # =============================================================================
-def fetch_ecb_hicp(timestamp: str) -> pd.DataFrame:
+def fetch_ecb_hicp() -> pd.DataFrame:
     """
     Appelle l'API ECB, sauvegarde la réponse brute dans data/raw/, et retourne
     le DataFrame brut pour l'étape suivante.
 
     Le fichier raw est sauvegardé AVANT toute transformation — c'est la réponse
     exacte de l'API, non modifiée. Cela permet de rejouer transform() sans
-    rappeler l'API si besoin.
-
-    Args:
-        timestamp (str): horodatage YYYYMMDD_HHMMSS pour nommer le fichier
+    rappeler l'API si besoin. Le fichier a un nom fixe (ecb_raw.csv) — chaque
+    exécution écrase le précédent pour ne pas accumuler de fichiers.
 
     Returns:
         pd.DataFrame: données brutes telles que retournées par l'API ECB
@@ -176,7 +173,7 @@ def fetch_ecb_hicp(timestamp: str) -> pd.DataFrame:
 
     # --- Sauvegarde dans data/raw/ ---
     # Le fichier raw conserve la réponse brute de l'API sans aucune modification
-    raw_path = RAW_DIR / f"ecb_raw_{timestamp}.csv"
+    raw_path = RAW_DIR / "ecb_raw.csv"
     df_raw.to_csv(raw_path, index=False, encoding="utf-8")
     log.info(f"Donnees brutes sauvegardees dans : {raw_path}")
 
@@ -186,7 +183,7 @@ def fetch_ecb_hicp(timestamp: str) -> pd.DataFrame:
 # =============================================================================
 # ÉTAPE 2 — TRANSFORM
 # =============================================================================
-def transform(df_raw: pd.DataFrame, timestamp: str) -> pd.DataFrame:
+def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
     """
     Nettoie et normalise les données brutes ECB, sauvegarde le résultat dans
     data/processed/, et retourne le DataFrame propre pour l'étape de chargement.
@@ -198,9 +195,11 @@ def transform(df_raw: pd.DataFrame, timestamp: str) -> pd.DataFrame:
         4. Conversion obs_value en numérique (certaines valeurs peuvent être "-")
         5. Suppression des lignes sans valeur (NaN obs_value ou time_period)
 
+    Le fichier a un nom fixe (ecb_clean.csv) — chaque exécution écrase le
+    précédent pour ne pas accumuler de fichiers.
+
     Args:
         df_raw (pd.DataFrame): données brutes issues de fetch_ecb_hicp()
-        timestamp (str): horodatage YYYYMMDD_HHMMSS pour nommer le fichier
 
     Returns:
         pd.DataFrame: données nettoyées prêtes pour l'insertion en base
@@ -255,7 +254,7 @@ def transform(df_raw: pd.DataFrame, timestamp: str) -> pd.DataFrame:
 
     # --- Sauvegarde dans data/processed/ ---
     # Le fichier processed est la version nettoyée, prête pour la base de données
-    processed_path = PROCESSED_DIR / f"ecb_clean_{timestamp}.csv"
+    processed_path = PROCESSED_DIR / "ecb_clean.csv"
     df.to_csv(processed_path, index=False, encoding="utf-8")
     log.info(f"Donnees nettoyees sauvegardees dans : {processed_path}")
 
@@ -305,23 +304,19 @@ def main():
     """
     Orchestre les 3 étapes ETL : Extract → Transform → Load.
 
-    Un timestamp unique est généré au début et partagé par les étapes 1 et 2
-    pour que les fichiers raw et processed d'une même exécution aient le même nom.
+    Les fichiers raw et processed ont un nom fixe par source — chaque exécution
+    écrase le précédent pour ne pas accumuler de fichiers.
     """
-    # Horodatage partagé entre raw et processed pour traçabilité des exécutions
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
     log.info("=" * 60)
     log.info("DEBUT COLLECTE ECB — Source BDD simulee (C1, issue #4)")
-    log.info(f"Timestamp : {timestamp}")
     log.info("=" * 60)
 
     try:
         # --- EXTRACT ---
-        df_raw = fetch_ecb_hicp(timestamp)
+        df_raw = fetch_ecb_hicp()
 
         # --- TRANSFORM ---
-        df_clean = transform(df_raw, timestamp)
+        df_clean = transform(df_raw)
 
         # --- LOAD ---
         log.info("Connexion a PostgreSQL (Docker port 5437)...")
@@ -330,8 +325,8 @@ def main():
 
         log.info("=" * 60)
         log.info("COLLECTE ECB TERMINEE AVEC SUCCES")
-        log.info(f"  Raw      : data/raw/ecb_raw_{timestamp}.csv")
-        log.info(f"  Processed: data/processed/ecb_clean_{timestamp}.csv")
+        log.info("  Raw      : data/raw/bdd_ecb/ecb_raw.csv")
+        log.info("  Processed: data/processed/bdd_ecb/ecb_clean.csv")
         log.info("  Base     : table ecb_hicp_raw dans PostgreSQL")
         log.info("=" * 60)
 
