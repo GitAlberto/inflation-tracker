@@ -3,6 +3,7 @@
 -- Compétence C4 — Modélisation et création de la base de données
 -- =============================================================================
 -- MCD : 5 tables sources + 1 table unifiée (source de vérité)
+-- Tables sources : ecb_hicp_raw, insee_ipc, datagouv_ipc, openfoodfacts, eurostat_bulk
 -- Toutes les valeurs sont normalisées en base 100 = 2015 après agrégation (C3)
 -- =============================================================================
 
@@ -10,6 +11,7 @@
 DROP TABLE IF EXISTS inflation_unified CASCADE;
 DROP TABLE IF EXISTS eurostat_bulk CASCADE;
 DROP TABLE IF EXISTS openfoodfacts CASCADE;
+DROP TABLE IF EXISTS datagouv_ipc CASCADE;
 DROP TABLE IF EXISTS insee_ipc CASCADE;
 DROP TABLE IF EXISTS ecb_hicp_raw CASCADE;
 
@@ -21,9 +23,10 @@ DROP TABLE IF EXISTS ecb_hicp_raw CASCADE;
 CREATE TABLE ecb_hicp_raw (
     id          UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     time_period VARCHAR(7)      NOT NULL,   -- Format YYYY-MM ex: "2024-01"
-    obs_value   NUMERIC(10, 4),             -- Valeur de l'indice HICP
-    ref_area    VARCHAR(10)     NOT NULL,   -- Zone géo ex: "U2" (zone euro), "FR"
-    unit        VARCHAR(50),               -- Unité ex: "INX_A_AVG"
+    obs_value   NUMERIC(10, 4),             -- Taux de variation annuel HICP en %
+    ref_area    VARCHAR(10)     NOT NULL,   -- Code pays ex: "FR", "DE", "ES"
+    coicop      VARCHAR(20),               -- Catégorie COICOP ex: "CP01", "CP04"
+    unit        VARCHAR(50),               -- Unité ex: "PC" (pourcentage)
     created_at  TIMESTAMP       DEFAULT NOW()
 );
 
@@ -44,7 +47,23 @@ CREATE TABLE insee_ipc (
 );
 
 -- =============================================================================
--- TABLE 3 : openfoodfacts
+-- TABLE 3 : datagouv_ipc
+-- Source : CSV data.gouv.fr (téléchargement direct)
+-- Contenu : Séries longues IPC France depuis 1990, toutes catégories
+-- =============================================================================
+CREATE TABLE datagouv_ipc (
+    id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    date_obs        DATE            NOT NULL,   -- Date d'observation
+    valeur          NUMERIC(10, 4)  NOT NULL,   -- Valeur IPC
+    categorie       VARCHAR(100)    NOT NULL,   -- Catégorie IPC
+    sous_categorie  VARCHAR(100),               -- Sous-catégorie
+    code_coicop     VARCHAR(20),               -- Code COICOP associé
+    source          VARCHAR(50)     DEFAULT 'data.gouv.fr',
+    created_at      TIMESTAMP       DEFAULT NOW()
+);
+
+-- =============================================================================
+-- TABLE 4 : openfoodfacts
 -- Source : Scraping Open Food Facts (licence ODbL)
 -- Contenu : Prix de produits alimentaires par catégorie
 -- RGPD : aucune donnée personnelle — prix publics uniquement
@@ -60,7 +79,7 @@ CREATE TABLE openfoodfacts (
 );
 
 -- =============================================================================
--- TABLE 4 : eurostat_bulk
+-- TABLE 5 : eurostat_bulk
 -- Source : Eurostat bulk CSV traité via PySpark
 -- Contenu : HICP 27 pays UE x 100+ catégories COICOP x 30 ans
 -- =============================================================================
@@ -75,7 +94,7 @@ CREATE TABLE eurostat_bulk (
 );
 
 -- =============================================================================
--- TABLE 5 : inflation_unified
+-- TABLE 6 : inflation_unified
 -- Table finale unifiée — source de vérité du projet
 -- Alimentée par src/aggregate/aggregate_clean.py (C3)
 -- Exposée par l'API data (C5) et consommée par le modèle Prophet (C8)
@@ -96,9 +115,13 @@ CREATE TABLE inflation_unified (
 -- =============================================================================
 CREATE INDEX idx_ecb_time       ON ecb_hicp_raw (time_period);
 CREATE INDEX idx_ecb_ref_area   ON ecb_hicp_raw (ref_area);
+CREATE INDEX idx_ecb_coicop     ON ecb_hicp_raw (coicop);
 
 CREATE INDEX idx_insee_date     ON insee_ipc (date_obs);
 CREATE INDEX idx_insee_cat      ON insee_ipc (categorie);
+
+CREATE INDEX idx_datagouv_date  ON datagouv_ipc (date_obs);
+CREATE INDEX idx_datagouv_cat   ON datagouv_ipc (categorie);
 
 CREATE INDEX idx_off_date       ON openfoodfacts (date_collecte);
 CREATE INDEX idx_off_cat        ON openfoodfacts (categorie);
