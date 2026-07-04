@@ -4,3 +4,4 @@
 # Installer séparément : pip install -r requirements-spark.txt
 
 pyspark==3.5.1
+setuptools>=70.0.0  # distutils supprimé en Python 3.12 — requis par PySpark 3.5.x
