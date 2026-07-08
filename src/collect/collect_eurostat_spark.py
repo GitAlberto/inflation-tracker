@@ -113,7 +113,7 @@ os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import StringType
+
 
 # =============================================================================
 # Chemins du projet
@@ -327,12 +327,33 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     log.info(f"Suppression des NaN : {nb_avant} → {nb_apres} lignes valides")
 
     # --- Conversion en pandas pour le chargement PostgreSQL ---
+    # Renommage pour correspondre au schéma eurostat_bulk (schema.sql) :
+    #   geo          → pays      (code pays ISO, ex: "FR")
+    #   time_period  → date_obs  (DATE 1er du mois, ex: "2024-01" → 2024-01-01)
+    #   obs_value    → valeur    (NUMERIC)
+    #   unit         → unite     (ex: "RCH_A")
+    # La conversion date se fait en pandas (plus robuste que Spark to_date
+    # pour les valeurs nulles ou les formats inattendus dans le fichier Eurostat)
     log.info("Conversion Spark → pandas...")
     df_clean = df_long.select(
-        "time_period", "obs_value", "geo", "coicop", "unit"
+        F.col("geo").alias("pays"),
+        F.col("coicop").alias("coicop"),
+        F.col("time_period"),   # converti en date dans pandas ci-dessous
+        F.col("obs_value").alias("valeur"),
+        F.col("unit").alias("unite"),
     ).toPandas()
 
-    df_clean = df_clean.sort_values(["geo", "coicop", "time_period"]).reset_index(drop=True)
+    df_clean["date_obs"] = pd.to_datetime(
+        df_clean["time_period"].str.strip() + "-01", format="%Y-%m-%d", errors="coerce"
+    ).dt.date
+    df_clean = df_clean.drop(columns=["time_period"])
+
+    nb_avant = len(df_clean)
+    df_clean = df_clean.dropna(subset=["date_obs"])
+    if len(df_clean) < nb_avant:
+        log.warning(f"Dates invalides supprimées : {nb_avant - len(df_clean)} lignes")
+
+    df_clean = df_clean.sort_values(["pays", "coicop", "date_obs"]).reset_index(drop=True)
 
     log.info(f"Aperçu :\n{df_clean.head(5).to_string()}")
     log.info(f"Résultat : {len(df_clean)} lignes × {len(df_clean.columns)} colonnes")
