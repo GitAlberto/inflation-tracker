@@ -282,13 +282,19 @@ def load_to_postgres(df_clean: pd.DataFrame, engine) -> None:
 
     # method="multi" + chunksize=500 : insère par lots de 500 lignes
     # pour éviter de dépasser la limite de paramètres PostgreSQL (~65 000)
+    # Vider la table sans la recréer — préserve les contraintes UUID/index du schema.sql
+    with engine.begin() as conn:
+        exists = conn.execute(text("SELECT to_regclass('public.ecb_hicp_raw')")).scalar()
+        if exists:
+            conn.execute(text("TRUNCATE TABLE ecb_hicp_raw CASCADE"))
+
     df_clean.to_sql(
         name="ecb_hicp_raw",
         con=engine,
-        if_exists="replace",   # écrase la table si elle existe déjà
-        index=False,           # ne pas insérer l'index pandas comme colonne
-        method="multi",        # insertion par lots
-        chunksize=500          # 500 lignes par batch
+        if_exists="append",    # append : schéma préexistant préservé
+        index=False,
+        method="multi",
+        chunksize=500
     )
 
     # Vérification : recompte les lignes insérées pour confirmer le succès

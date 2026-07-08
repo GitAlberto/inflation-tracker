@@ -311,8 +311,8 @@ def transform(xml_brut: str, idbanks: dict[str, str]) -> pd.DataFrame:
             rows.append({
                 "date_obs":       date_obs,
                 "valeur":         float(obs_value),
-                "categorie":      categorie,
-                "sous_categorie": title,
+                "categorie":      categorie[:100],
+                "sous_categorie": title[:100],   # VARCHAR(100) dans schema.sql
                 "idbank":         idbank,
                 "source":         "INSEE",
             })
@@ -369,10 +369,16 @@ def load_to_postgres(df_clean: pd.DataFrame, engine) -> None:
     log.info("=" * 60)
     log.info(f"ETAPE 3 — LOAD : insertion de {len(df_clean)} lignes dans insee_ipc")
 
+    # Vider la table sans la recréer — préserve les contraintes UUID/index du schema.sql
+    with engine.begin() as conn:
+        exists = conn.execute(text("SELECT to_regclass('public.insee_ipc')")).scalar()
+        if exists:
+            conn.execute(text("TRUNCATE TABLE insee_ipc CASCADE"))
+
     df_clean.to_sql(
         name="insee_ipc",
         con=engine,
-        if_exists="replace",
+        if_exists="append",
         index=False,
         method="multi",
         chunksize=500,

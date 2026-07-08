@@ -362,10 +362,16 @@ def load_to_postgres(df_clean: pd.DataFrame, engine) -> None:
     log.info("=" * 60)
     log.info(f"ETAPE 3 — LOAD : insertion de {len(df_clean)} lignes dans eurostat_bulk")
 
+    # Vider la table sans la recréer — préserve les contraintes UUID/index du schema.sql
+    with engine.begin() as conn:
+        exists = conn.execute(text("SELECT to_regclass('public.eurostat_bulk')")).scalar()
+        if exists:
+            conn.execute(text("TRUNCATE TABLE eurostat_bulk CASCADE"))
+
     df_clean.to_sql(
         name="eurostat_bulk",
         con=engine,
-        if_exists="replace",
+        if_exists="append",
         index=False,
         method="multi",
         chunksize=1000
