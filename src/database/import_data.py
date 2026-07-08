@@ -68,25 +68,25 @@ SOURCES = [
         "key":    "insee",
         "label":  "API INSEE BDM (IPC France par catégorie)",
         "module": "src.collect.collect_insee_api",
-        "status": "pending",   # sera créé en Phase 2
+        "status": "ready",
     },
     {
         "key":    "csv",
         "label":  "CSV data.gouv.fr (séries longues IPC)",
         "module": "src.collect.collect_csv",
-        "status": "pending",   # sera créé en Phase 2
+        "status": "ready",
     },
     {
         "key":    "openfoodfacts",
         "label":  "Scraping Open Food Facts (prix alimentaires)",
         "module": "src.collect.scrape_openfoodfacts",
-        "status": "pending",   # sera créé en Phase 2
+        "status": "ready",
     },
     {
         "key":    "eurostat",
         "label":  "Big Data Eurostat + PySpark (27 pays × 30 ans)",
         "module": "src.collect.collect_eurostat_spark",
-        "status": "pending",   # sera créé en Phase 2
+        "status": "ready",
     },
 ]
 

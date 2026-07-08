@@ -340,10 +340,16 @@ def load_to_postgres(df_clean: pd.DataFrame, engine) -> None:
     log.info("=" * 60)
     log.info(f"ETAPE 3 — LOAD : insertion de {len(df_clean)} lignes dans datagouv_ipc")
 
+    # Vider la table sans la recréer — préserve les contraintes UUID/index du schema.sql
+    with engine.begin() as conn:
+        exists = conn.execute(text("SELECT to_regclass('public.datagouv_ipc')")).scalar()
+        if exists:
+            conn.execute(text("TRUNCATE TABLE datagouv_ipc CASCADE"))
+
     df_clean.to_sql(
         name="datagouv_ipc",
         con=engine,
-        if_exists="replace",
+        if_exists="append",
         index=False,
         method="multi",
         chunksize=500

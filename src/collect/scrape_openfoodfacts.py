@@ -319,10 +319,16 @@ def load_to_postgres(df_clean: pd.DataFrame, engine) -> None:
     log.info("=" * 60)
     log.info(f"ETAPE 3 — LOAD : insertion de {len(df_clean)} lignes dans openfoodfacts")
 
+    # Vider la table sans la recréer — préserve les contraintes UUID/index du schema.sql
+    with engine.begin() as conn:
+        exists = conn.execute(text("SELECT to_regclass('public.openfoodfacts')")).scalar()
+        if exists:
+            conn.execute(text("TRUNCATE TABLE openfoodfacts CASCADE"))
+
     df_clean.to_sql(
         name="openfoodfacts",
         con=engine,
-        if_exists="replace",
+        if_exists="append",
         index=False,
         method="multi",
         chunksize=500
