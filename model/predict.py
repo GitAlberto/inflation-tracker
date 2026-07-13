@@ -109,6 +109,11 @@ def predict_one(categorie: str, horizon: int = 12) -> pd.DataFrame:
     # Chargement du modèle Prophet depuis le .pkl
     model = load_model(categorie)
 
+    # Réduction des échantillons Monte-Carlo pour les intervalles de confiance
+    # Par défaut Prophet utilise 1000 échantillons → fragmentation mémoire sous Windows
+    # 200 échantillons suffisent pour des IC robustes sur données mensuelles (12-36 pts)
+    model.uncertainty_samples = 200
+
     # Création du DataFrame de dates futures : horizon mois supplémentaires
     # freq='MS' = Month Start : premier jour de chaque mois (cohérent avec les données INSEE)
     future = model.make_future_dataframe(periods=horizon, freq="MS")
