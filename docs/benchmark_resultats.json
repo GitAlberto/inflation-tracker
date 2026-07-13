@@ -1,0 +1,29 @@
+{
+  "serie": "IPC France - 00 Ensemble (INSEE)",
+  "train_period": "2020-01 / 2024-12",
+  "test_period": "2025-01 / 2025-12",
+  "nb_train_points": 60,
+  "nb_test_points": 12,
+  "modeles": [
+    {
+      "nom": "Holt-Winters (ETS)",
+      "MAE": 0.2198,
+      "RMSE": 0.2614,
+      "MAPE": 0.18
+    },
+    {
+      "nom": "ARIMA(2,1,2)",
+      "MAE": 0.9773,
+      "RMSE": 1.0969,
+      "MAPE": 0.81
+    },
+    {
+      "nom": "Prophet",
+      "MAE": 0.2624,
+      "RMSE": 0.3233,
+      "MAPE": 0.22
+    }
+  ],
+  "choix_final": "Prophet",
+  "justification": "Changepoints automatiques, intervalles de confiance, scalabilité 13 catégories"
+}
