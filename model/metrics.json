@@ -1,0 +1,93 @@
+{
+  "00 - Ensemble": {
+    "MAE": 0.2624,
+    "RMSE": 0.3233,
+    "MAPE_pct": 0.22,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "01 - Alimentation et boissons non alcoolisées": {
+    "MAE": 1.5058,
+    "RMSE": 1.7286,
+    "MAPE_pct": 1.11,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "02 - Boissons alcoolisées, tabac et stupéfiants": {
+    "MAE": 1.7631,
+    "RMSE": 1.8008,
+    "MAPE_pct": 1.14,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "03 - Articles d'habillement et chaussures": {
+    "MAE": 1.0987,
+    "RMSE": 1.2754,
+    "MAPE_pct": 1.05,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "04 - Logement, eau, gaz, électricité et autres combustibles": {
+    "MAE": 4.8327,
+    "RMSE": 5.0883,
+    "MAPE_pct": 3.69,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "05 - Meubles, articles de ménage et entretien courant du foyer": {
+    "MAE": 0.2848,
+    "RMSE": 0.3455,
+    "MAPE_pct": 0.25,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "06 - Santé": {
+    "MAE": 1.5209,
+    "RMSE": 1.5281,
+    "MAPE_pct": 1.61,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "07 - Transports": {
+    "MAE": 0.7174,
+    "RMSE": 1.0428,
+    "MAPE_pct": 0.57,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "08 - Communications": {
+    "MAE": 3.7871,
+    "RMSE": 4.9403,
+    "MAPE_pct": 4.93,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "09 - Loisirs et culture": {
+    "MAE": 1.4327,
+    "RMSE": 1.4783,
+    "MAPE_pct": 1.3,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "10 - Enseignement": {
+    "MAE": 0.4223,
+    "RMSE": 0.5381,
+    "MAPE_pct": 0.35,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "11 - Restaurants et hôtels": {
+    "MAE": 0.7321,
+    "RMSE": 0.8677,
+    "MAPE_pct": 0.58,
+    "n_train": 60,
+    "n_eval": 12
+  },
+  "Ensemble hors énergie": {
+    "MAE": 0.233,
+    "RMSE": 0.29,
+    "MAPE_pct": 0.2,
+    "n_train": 60,
+    "n_eval": 12
+  }
+}
