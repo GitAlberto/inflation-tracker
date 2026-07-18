@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Provisioning automatique de la datasource Prometheus dans Grafana
+# Ce fichier est monté dans le container Grafana via docker-compose.yml
+# Grafana charge automatiquement cette configuration au démarrage
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy           # Grafana appelle Prometheus côté serveur (pas le navigateur)
+    url: http://prometheus:9090   # hostname du service Docker Compose
+    isDefault: true         # datasource sélectionnée par défaut dans les dashboards
+    editable: false         # empêche la modification depuis l'UI Grafana
+    jsonData:
+      timeInterval: "15s"   # cohérent avec scrape_interval dans prometheus.yml

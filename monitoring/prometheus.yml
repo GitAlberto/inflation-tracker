@@ -1,23 +1,32 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 15s        # fréquence de collecte des métriques
+  evaluation_interval: 15s    # fréquence d'évaluation des règles d'alertes
 
+# Fichier de règles d'alertes
 rule_files:
   - "alerts.yml"
 
 scrape_configs:
-  - job_name: 'prometheus'
+  # Prometheus se scrape lui-même pour les métriques internes
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
-  - job_name: 'inflation_model_api'
+  # API modèle Prophet (C9/C11) — métriques sur /metrics-prometheus
+  # host.docker.internal = localhost vu depuis le container Docker
+  - job_name: "inflation_model_api"
+    metrics_path: "/metrics-prometheus"   # endpoint Prometheus dédié (≠ /api/metrics ML)
     static_configs:
-      - targets: ['host.docker.internal:8000']
+      - targets: ["host.docker.internal:8002"]
 
-  - job_name: 'inflation_data_api'
+  # API data REST (C5) — si prometheus-client est ajouté ultérieurement
+  - job_name: "inflation_data_api"
+    metrics_path: "/metrics-prometheus"
     static_configs:
-      - targets: ['host.docker.internal:8001']
+      - targets: ["host.docker.internal:8001"]
 
-  - job_name: 'inflation_app'
+  # Application Streamlit (C17/C20) — métriques applicatives
+  - job_name: "inflation_app"
+    metrics_path: "/metrics-prometheus"
     static_configs:
-      - targets: ['host.docker.internal:8501']
+      - targets: ["host.docker.internal:8501"]

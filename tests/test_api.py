@@ -1,19 +1,32 @@
 """
-C5 — Tests automatisés de l'API REST inflation-tracker
-Issue GitHub : #11
+C5/C12 — Tests automatisés de l'API data REST inflation-tracker
+Issue GitHub : #11 (C5), #18 (C12)
 
 Exécution :
     pytest tests/test_api.py -v
+
+Tests CI (sans DB) :
+    pytest tests/test_api.py -v -m "not requires_db"
 
 Preuves générées :
     pytest tests/test_api.py -v --tb=short > tests/resultats_tests_api.txt
 """
 
+import os
+
+import pytest
 from fastapi.testclient import TestClient
 
 from api.data.main import app
 
 client = TestClient(app)
+
+# Marqueur : tests nécessitant une base PostgreSQL peuplée
+# → passent en local avec Docker, skippés en CI (pas de données chargées)
+requires_db = pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Requires a populated PostgreSQL database — skipped in CI",
+)
 
 
 # =============================================================================
@@ -32,6 +45,7 @@ def test_health():
 # /api/inflation
 # =============================================================================
 
+@requires_db
 def test_inflation_sans_filtre_retourne_donnees():
     r = client.get("/api/inflation?limit=5")
     assert r.status_code == 200
@@ -41,6 +55,7 @@ def test_inflation_sans_filtre_retourne_donnees():
     assert body["limit"] == 5
 
 
+@requires_db
 def test_inflation_filtre_pays_source():
     r = client.get("/api/inflation?pays=FR&source=INSEE&limit=10")
     assert r.status_code == 200
@@ -51,6 +66,7 @@ def test_inflation_filtre_pays_source():
         assert row["source"] == "INSEE"
 
 
+@requires_db
 def test_inflation_filtre_date():
     r = client.get(
         "/api/inflation?pays=FR&source=INSEE"
@@ -63,6 +79,7 @@ def test_inflation_filtre_date():
     assert body["data"][0]["date_obs"] == "2025-12-01"
 
 
+@requires_db
 def test_inflation_pays_inexistant_retourne_vide():
     r = client.get("/api/inflation?pays=XX&limit=10")
     assert r.status_code == 200
@@ -71,6 +88,7 @@ def test_inflation_pays_inexistant_retourne_vide():
     assert body["data"] == []
 
 
+@requires_db
 def test_inflation_pagination():
     r1 = client.get("/api/inflation?source=ECB&limit=5&offset=0")
     r2 = client.get("/api/inflation?source=ECB&limit=5&offset=5")
@@ -90,6 +108,7 @@ def test_inflation_limit_max_1000():
 # /api/inflation/tendance
 # =============================================================================
 
+@requires_db
 def test_tendance_retourne_12_points_annee():
     r = client.get(
         "/api/inflation/tendance?pays=DE&source=EUROSTAT"
@@ -115,6 +134,7 @@ def test_tendance_params_obligatoires():
 # /api/inflation/pays — sources — categories
 # =============================================================================
 
+@requires_db
 def test_liste_pays():
     r = client.get("/api/inflation/pays")
     assert r.status_code == 200
@@ -124,6 +144,7 @@ def test_liste_pays():
     assert len(pays) > 10  # 27 pays UE minimum
 
 
+@requires_db
 def test_liste_sources():
     r = client.get("/api/inflation/sources")
     assert r.status_code == 200
@@ -131,6 +152,7 @@ def test_liste_sources():
     assert set(sources) == {"ECB", "INSEE", "DATAGOUV", "EUROSTAT"}
 
 
+@requires_db
 def test_liste_categories_filtree_par_source():
     r = client.get("/api/inflation/categories?source=INSEE")
     assert r.status_code == 200
@@ -143,6 +165,7 @@ def test_liste_categories_filtree_par_source():
 # /api/prix-alimentaires
 # =============================================================================
 
+@requires_db
 def test_prix_alimentaires_retourne_donnees():
     r = client.get("/api/prix-alimentaires?limit=10")
     assert r.status_code == 200
@@ -151,6 +174,7 @@ def test_prix_alimentaires_retourne_donnees():
     assert len(body["data"]) == 10
 
 
+@requires_db
 def test_prix_alimentaires_filtre_categorie():
     r = client.get("/api/prix-alimentaires?categorie=tomatoes&limit=50")
     assert r.status_code == 200
@@ -160,6 +184,7 @@ def test_prix_alimentaires_filtre_categorie():
         assert "tomat" in row["categorie"].lower()
 
 
+@requires_db
 def test_prix_alimentaires_stats_pommes():
     r = client.get("/api/prix-alimentaires/stats?categorie=apples")
     assert r.status_code == 200
@@ -171,6 +196,7 @@ def test_prix_alimentaires_stats_pommes():
     assert pommes["nb_produits"] == 14
 
 
+@requires_db
 def test_prix_alimentaires_categories():
     r = client.get("/api/prix-alimentaires/categories")
     assert r.status_code == 200
