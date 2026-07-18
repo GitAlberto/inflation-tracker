@@ -26,6 +26,9 @@ from fastapi import APIRouter, HTTPException, Query
 # Fonctionne car model/__init__.py existe et le projet est lancé depuis la racine
 from model.predict import list_available, predict_all, predict_one
 
+# Compteur Prometheus — incrémenté à chaque prédiction réussie (C11)
+from api.model.metrics import predictions_total
+
 from api.model.schemas import (
     CategoryMetrics,
     MetricsResponse,
@@ -115,6 +118,9 @@ def predict_categorie(
     except FileNotFoundError as exc:
         # .pkl absent malgré metrics.json présent (incohérence)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Incrémentation du compteur Prometheus par catégorie (C11)
+    predictions_total.labels(categorie=categorie).inc()
 
     return _df_to_predictions(df, horizon, categorie)
 

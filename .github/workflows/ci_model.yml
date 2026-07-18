@@ -1,0 +1,64 @@
+name: CI — Modèle Prophet (C12/C13)
+
+# Déclenché à chaque push et pull request sur les branches principales
+on:
+  push:
+    branches: [main, AlbertoFinB3]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-model:
+    name: Tests modèle Prophet + API modèle
+    runs-on: ubuntu-latest   # machine virtuelle GitHub hébergée sur Ubuntu
+
+    steps:
+      # 1 — Récupération du code source
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2 — Installation de Python 3.12 (même version que le développement local)
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"   # cache des packages pip pour accélérer les runs suivants
+
+      # 3 — Installation des dépendances Python
+      # Note : prophet/cmdstanpy sont installés mais CmdStan (C++) n'est PAS compilé
+      # → les tests nécessitant les .pkl sont automatiquement skippés (requires_models)
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4 — Tests unitaires modèle (sans .pkl, sans DB)
+      # Ces tests tournent toujours en CI : slugify, compute_metrics, metrics.json
+      - name: Run model unit tests (C12)
+        run: |
+          pytest tests/test_model.py -v \
+            --cov=model \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-model.xml
+        env:
+          CI: "true"   # active les skipif sur les tests nécessitant des ressources externes
+
+      # 5 — Tests API modèle (sans .pkl → predict tests skippés automatiquement)
+      # health, categories, metrics, 404, 422 passent sans modèles chargés
+      - name: Run API model tests (C12)
+        run: |
+          pytest tests/test_api_model.py -v \
+            --cov=api/model \
+            --cov-report=term-missing \
+            --cov-append \
+            --cov-report=xml:coverage-api-model.xml
+        env:
+          CI: "true"
+
+      # 6 — Upload du rapport de couverture (optionnel — visible dans l'onglet Actions)
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()   # upload même si les tests échouent
+        with:
+          name: coverage-report-model
+          path: |
+            coverage-model.xml
+            coverage-api-model.xml

@@ -1,0 +1,56 @@
+name: CI — API Data (C5/C12/C13)
+
+# Déclenché à chaque push et pull request sur les branches principales
+on:
+  push:
+    branches: [main, AlbertoFinB3]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-data:
+    name: Tests API data REST
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1 — Récupération du code source
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2 — Installation de Python 3.12
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # 3 — Installation des dépendances (sous-ensemble sans prophet pour ci_data)
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn pydantic sqlalchemy psycopg2-binary \
+                      python-dotenv httpx pytest pytest-cov
+
+      # 4 — Tests API data
+      # En CI (CI=true) : seuls health + validations passent (requires_db tests skippés)
+      # Les tests DB nécessitent une base peuplée — exécution complète en local uniquement
+      - name: Run data API tests (C12)
+        run: |
+          pytest tests/test_api.py -v \
+            --cov=api/data \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-api-data.xml
+        env:
+          CI: "true"                         # active les skipif requires_db
+          POSTGRES_USER: admin               # variables de connexion (inutilisées en CI
+          POSTGRES_PASSWORD: testpassword    # car les tests DB sont skippés)
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_DB: inflation_tracker
+
+      # 5 — Upload du rapport de couverture
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report-data
+          path: coverage-api-data.xml

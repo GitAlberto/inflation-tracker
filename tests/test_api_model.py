@@ -19,6 +19,8 @@ Issue GitHub : #15 (C9)
 =============================================================================
 """
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -31,6 +33,13 @@ client = TestClient(app)
 CAT_VALID = "00 - Ensemble"
 # Catégorie qui n'existe pas dans metrics.json
 CAT_INVALID = "99 - Catégorie inexistante"
+
+# Marqueur : tests nécessitant les modèles .pkl entraînés localement
+# → passent en local après model/train.py, skippés en CI (fichiers gitignorés)
+requires_models = pytest.mark.skipif(
+    not Path("model/prophet_00_ensemble.pkl").exists(),
+    reason="Requires trained Prophet models (.pkl) — run model/train.py first",
+)
 
 
 # =============================================================================
@@ -113,6 +122,7 @@ def test_metrics_categorie_invalide():
 # Prédictions — une catégorie
 # =============================================================================
 
+@requires_models
 def test_predict_categorie_defaut():
     """GET /predict/{categorie} doit retourner 12 prédictions par défaut."""
     resp = client.get(f"/api/predict/{CAT_VALID}")
@@ -125,6 +135,7 @@ def test_predict_categorie_defaut():
     assert "generated_at" in data          # horodatage présent
 
 
+@requires_models
 def test_predict_categorie_structure_point():
     """Chaque point de prédiction doit contenir date_pred, yhat, yhat_lower, yhat_upper."""
     resp = client.get(f"/api/predict/{CAT_VALID}")
@@ -138,6 +149,7 @@ def test_predict_categorie_structure_point():
     assert point["yhat_lower"] <= point["yhat"] <= point["yhat_upper"]
 
 
+@requires_models
 def test_predict_categorie_horizon_custom():
     """GET /predict/{categorie}?horizon=6 doit retourner exactement 6 prédictions."""
     resp = client.get(f"/api/predict/{CAT_VALID}?horizon=6")
@@ -163,6 +175,7 @@ def test_predict_categorie_invalide():
 # Prédictions — toutes catégories
 # =============================================================================
 
+@requires_models
 def test_predict_toutes():
     """GET /predict doit retourner un dict avec les 13 catégories."""
     resp = client.get("/api/predict")
@@ -172,6 +185,7 @@ def test_predict_toutes():
     assert len(data) == 13                 # 13 catégories Prophet
 
 
+@requires_models
 def test_predict_toutes_contient_ensemble():
     """GET /predict doit inclure la catégorie '00 - Ensemble'."""
     resp = client.get("/api/predict")

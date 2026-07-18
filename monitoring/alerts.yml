@@ -1,6 +1,63 @@
-groups: []
+groups:
+  - name: inflation_tracker_model
+    # Règles d'alertes pour l'API modèle Prophet (C11)
+    # Prometheus évalue ces règles toutes les 15 secondes (evaluation_interval dans prometheus.yml)
+    rules:
 
-# Les règles d'alertes seront ajoutées en S5 (C11)
-# - MAE modèle trop élevée
-# - Latence API > 2s
-# - Taux d'erreurs > 5%
+      # Alerte 1 — Dérive du modèle : MAE trop élevée
+      # Déclenchée si la MAE d'une catégorie dépasse 5 points IPC pendant 5 minutes
+      # Seuil : 5 pts est raisonnable sur un IPC base 100 (~5% d'erreur relative)
+      - alert: ModelMAETropElevee
+        expr: inflation_prediction_mae > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dérive modèle Prophet — MAE élevée"
+          description: >
+            La MAE de la catégorie {{ $labels.categorie }} est de {{ $value | printf "%.2f" }}
+            depuis plus de 5 minutes (seuil : 5 pts IPC).
+            Action : vérifier les nouvelles données INSEE et réentraîner le modèle.
+
+      # Alerte 2 — Latence élevée sur les prédictions
+      # p95 de la latence > 10 secondes sur 2 minutes → charge anormale
+      - alert: LatencePredictionElevee
+        expr: histogram_quantile(0.95, rate(inflation_prediction_latency_seconds_bucket[5m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence API prédiction > 10s (p95)"
+          description: >
+            Le p95 de la latence de prédiction est {{ $value | printf "%.1f" }}s.
+            Cause possible : modèles .pkl non mis en cache, I/O disque lent.
+
+      # Alerte 3 — Taux d'erreurs serveur élevé
+      # Plus de 5% des requêtes retournent une erreur 500 sur 5 minutes
+      - alert: TauxErreurs500Eleve
+        expr: >
+          rate(inflation_api_errors_total{error_type="server_error"}[5m])
+          /
+          (rate(inflation_api_requests_total[5m]) + 0.001)
+          > 0.05
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d'erreurs 500 API modèle > 5%"
+          description: >
+            Le taux d'erreurs serveur est {{ $value | printf "%.1%%" }}.
+            Vérifier les logs uvicorn et l'état des modèles .pkl.
+
+      # Alerte 4 — API modèle inaccessible
+      # Aucune requête reçue depuis 5 minutes → service probablement arrêté
+      - alert: APIModelleIndisponible
+        expr: absent(inflation_api_requests_total)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API modèle Prophet inaccessible"
+          description: >
+            Prometheus n'a reçu aucune métrique de l'API modèle depuis 5 minutes.
+            Vérifier que uvicorn tourne sur le port 8002.
