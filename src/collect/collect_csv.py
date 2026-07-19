@@ -273,24 +273,96 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
 
     df = df_raw.copy()
 
-    # --- Filtre sur la fréquence mensuelle ---
+    # --- Filtre 1 : fréquence mensuelle ---
     # Le fichier contient FREQ='A' (annuel), 'M' (mensuel), 'Q' (trimestriel)
-    # On garde uniquement le mensuel pour cohérence avec ECB et INSEE API
     freq_disponibles = df["FREQ"].unique()
     log.info(f"Fréquences disponibles : {freq_disponibles}")
-
     if "M" in freq_disponibles:
         df = df[df["FREQ"] == "M"].copy()
         log.info(f"Filtre FREQ='M' : {len(df)} lignes mensuelles")
     else:
         log.warning("Pas de données mensuelles — on garde toutes les fréquences")
 
+    # --- Filtre 2 : unité = indice (IX) uniquement ---
+    # UNIT_MEASURE peut être :
+    #   "IX"    → indice IPC (ex: 119.17)  ← ce qu'on veut
+    #   "RCH_A" → taux de variation annuel en % (ex: 2.4)  ← à exclure
+    #   "RCH_M" → taux mensuel %  ← à exclure
+    # Mélanger indices et taux dans la même colonne 'valeur' = non-sens
+    unites_disponibles = df["UNIT_MEASURE"].unique()
+    log.info(f"Unités disponibles : {unites_disponibles}")
+    df = df[df["UNIT_MEASURE"] == "IX"].copy()
+    log.info(f"Filtre UNIT_MEASURE='IX' : {len(df)} lignes indices")
+
+    # --- Filtre 3 : indicateur = valeur d'indice (pas variation YoY) ---
+    # IND_TYPE distingue la valeur brute de l'indice de ses dérivés :
+    #   "IX"  → valeur de l'indice (ex: 62.81)  ← ce qu'on veut
+    #   "YOY" → variation année-sur-année, parfois stockée avec UNIT_MEASURE="IX"
+    #           (ex: 0.40 = variation de 0.40 point d'indice) — valeur parasite
+    # Sans ce filtre, des lignes avec valeur 0.40 se glissent dans les indices.
+    if "IND_TYPE" in df.columns:
+        types_ind = df["IND_TYPE"].unique()
+        log.info(f"IND_TYPE disponibles : {types_ind}")
+        df = df[df["IND_TYPE"] == "IX"].copy()
+        log.info(f"Filtre IND_TYPE='IX' : {len(df)} lignes valeurs d'indice")
+    else:
+        log.warning("Colonne IND_TYPE absente — filtre YoY ignoré")
+
+    # --- Filtre 4 : France nationale uniquement (pas les DOM/COM) ---
+    # GEO code le territoire géographique :
+    #   "F"   → France métropolitaine (national)  ← ce qu'on veut
+    #   "973" → Guyane, "971" → Guadeloupe, etc.
+    # Sans ce filtre, la même catégorie COICOP pour le même mois
+    # génère 3 lignes ou plus (une par territoire), causant des doublons
+    # dans inflation_unified après l'agrégation.
+    if "GEO" in df.columns:
+        geos = df["GEO"].unique()
+        log.info(f"GEO disponibles ({len(geos)}) : {geos[:20]}")
+        df = df[df["GEO"] == "F"].copy()
+        log.info(f"Filtre GEO='F' : {len(df)} lignes France nationale")
+    else:
+        log.warning("Colonne GEO absente — filtre territoire ignoré")
+
+    # --- Filtre 5 : pas de subdivision par groupe produit ---
+    # PRODUCT_GROUP filtre les sous-divisions par type de produit :
+    #   "_Z"  → aucun groupe produit (agrégat pur COICOP)  ← ce qu'on veut
+    #   "4005", "4037", etc. → sous-groupes spécifiques (alimentation bio, etc.)
+    # Sans ce filtre, une catégorie COICOP peut avoir plusieurs lignes par mois
+    # selon le découpage produit, générant là aussi des doublons.
+    if "PRODUCT_GROUP" in df.columns:
+        pg_vals = df["PRODUCT_GROUP"].unique()
+        log.info(f"PRODUCT_GROUP disponibles ({len(pg_vals)}) : {pg_vals[:10]}")
+        df = df[df["PRODUCT_GROUP"] == "_Z"].copy()
+        log.info(f"Filtre PRODUCT_GROUP='_Z' : {len(df)} lignes agrégat COICOP pur")
+    else:
+        log.warning("Colonne PRODUCT_GROUP absente — filtre groupe produit ignoré")
+
+    # --- Filtre 6 : base de référence ---
+    # BASE_PER indique la période de base de l'indice.
+    # Depuis 2025, l'INSEE a rebasé l'ensemble de ses séries de 2015 vers 2025.
+    # Le fichier DATAGOUV ne contient donc plus de données en base 2015.
+    # On log l'information mais on conserve les données (base 2025) plutôt que
+    # de rejeter toute la source — l'évolution relative reste exploitable.
+    # NOTE : cela crée une incompatibilité d'échelle avec les séries INSEE API
+    # (base 2015=100) utilisées par le modèle Prophet. Voir specs_techniques.md.
+    bases_disponibles = df["BASE_PER"].unique()
+    log.info(f"Bases disponibles : {bases_disponibles}")
+    if "2015" in [str(b) for b in bases_disponibles]:
+        df = df[df["BASE_PER"].astype(str) == "2015"].copy()
+        log.info(f"Filtre BASE_PER='2015' : {len(df)} lignes base 100=2015")
+    else:
+        log.warning(
+            f"BASE_PER='2015' non trouvé (bases actuelles : {bases_disponibles}). "
+            "INSEE a rebasé en 2025. Données conservées en base 2025. "
+            "Incompatibilité d'échelle avec INSEE API (base 2015) — documentée."
+        )
+
     # --- Renommage des colonnes vers notre convention ---
     df = df.rename(columns={
         "COICOP_2018":  "categorie",    # code COICOP ex: "01.1.3"
         "TIME_PERIOD":  "time_period",  # ex: "2024-01"
-        "OBS_VALUE":    "valeur",       # valeur de l'indice
-        "UNIT_MEASURE": "code_coicop",  # unité ex: "IX" (index)
+        "OBS_VALUE":    "valeur",       # valeur de l'indice base 100=2015
+        "UNIT_MEASURE": "unite",        # "IX" (index) — gardé pour traçabilité
     })
 
     # --- Conversion des dates ---

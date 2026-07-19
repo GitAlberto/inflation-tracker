@@ -2,16 +2,22 @@
 =============================================================================
 C4 — Orchestrateur d'import — toutes sources → PostgreSQL
 =============================================================================
-Ce script est le point d'entrée unique pour alimenter toute la base de données.
-Il enchaîne les 5 scripts de collecte dans l'ordre et produit un rapport final.
+Point d'entrée unique pour alimenter toute la base de données.
+Enchaîne dans l'ordre :
+    1. Nettoyage des anciens fichiers data/raw/ et data/processed/
+    2. Collecte des 5 sources (ECB, INSEE, CSV/DATAGOUV, OpenFoodFacts, Eurostat)
+    3. Agrégation et normalisation → inflation_unified
 
 Comportement en cas d'erreur :
     Si une source plante, l'orchestrateur continue avec les suivantes.
     Le rapport final liste les succès et les échecs — aucune source silencieuse.
 
 Utilisation :
-    # Toutes les sources
+    # Pipeline complet (nettoyage + collecte + agrégation)
     python src/database/import_data.py
+
+    # Sans nettoyage préalable des fichiers (garde les anciens raw/processed)
+    python src/database/import_data.py --no-clean
 
     # Une seule source (pour déboguer ou mettre à jour indépendamment)
     python src/database/import_data.py --source ecb
@@ -20,8 +26,8 @@ Utilisation :
     python src/database/import_data.py --source openfoodfacts
     python src/database/import_data.py --source eurostat
 
-    # Plusieurs sources
-    python src/database/import_data.py --source ecb insee
+    # Sans relancer l'agrégation à la fin
+    python src/database/import_data.py --no-aggregate
 
 Chaque script de collecte reste également lançable seul :
     python src/collect/load_ecb_to_db.py
@@ -60,7 +66,7 @@ log = logging.getLogger(__name__)
 SOURCES = [
     {
         "key":    "ecb",
-        "label":  "BDD simulée ECB (HICP 6 pays × 12 COICOP)",
+        "label":  "BDD simulée ECB (HICP 6 pays × 13 COICOP, indice base 2015)",
         "module": "src.collect.load_ecb_to_db",
         "status": "ready",
     },
@@ -89,6 +95,52 @@ SOURCES = [
         "status": "ready",
     },
 ]
+
+
+def clean_output_files() -> None:
+    """
+    Supprime tous les fichiers dans data/raw/ et data/processed/.
+
+    Conserve les dossiers et les README.md — seuls les fichiers de données
+    (CSV, JSON, GZ, parquet...) sont supprimés pour repartir d'un état propre.
+    On ne supprime jamais les dossiers eux-mêmes : certains scripts vérifient
+    leur existence avant de créer des fichiers.
+    """
+    DATA_DIR = ROOT / "data"
+    extensions_donnees = {".csv", ".json", ".gz", ".parquet", ".tsv", ".xml", ".zip"}
+
+    total = 0
+    for sous_dossier in ["raw", "processed"]:
+        dossier = DATA_DIR / sous_dossier
+        if not dossier.exists():
+            continue
+        # Parcours récursif — supprime uniquement les fichiers de données
+        for fichier in dossier.rglob("*"):
+            if fichier.is_file() and fichier.suffix.lower() in extensions_donnees:
+                fichier.unlink()
+                log.info(f"  Supprimé : {fichier.relative_to(ROOT)}")
+                total += 1
+
+    log.info(f"Nettoyage terminé — {total} fichier(s) supprimé(s)")
+
+
+def run_aggregate() -> dict:
+    """Lance aggregate_clean.py après la collecte pour normaliser inflation_unified."""
+    log.info("[aggregate] Lancement de src.aggregate.aggregate_clean...")
+    debut = time.time()
+    try:
+        import importlib
+        module = importlib.import_module("src.aggregate.aggregate_clean")
+        module.main()
+        duree = round(time.time() - debut, 1)
+        log.info(f"[aggregate] OK en {duree}s")
+        return {"key": "aggregate", "label": "Agrégation → inflation_unified",
+                "status": "OK", "duree": duree, "message": ""}
+    except Exception as e:
+        duree = round(time.time() - debut, 1)
+        log.error(f"[aggregate] ERREUR après {duree}s : {e}")
+        return {"key": "aggregate", "label": "Agrégation → inflation_unified",
+                "status": "ERREUR", "duree": duree, "message": str(e)}
 
 
 def run_source(source: dict) -> dict:
@@ -177,13 +229,18 @@ def print_rapport(rapports: list[dict], debut_global: float) -> None:
         log.warning("Des sources ont échoué — vérifier les logs ci-dessus.")
 
 
-def main(sources_selectionnees: list[str] | None = None) -> None:
+def main(
+    sources_selectionnees: list[str] | None = None,
+    do_clean: bool = True,
+    do_aggregate: bool = True,
+) -> None:
     """
-    Orchestre l'import de toutes les sources (ou d'un sous-ensemble).
+    Orchestre le pipeline complet : nettoyage → collecte → agrégation.
 
     Args:
-        sources_selectionnees: liste de clés de sources à lancer.
-                               Si None → toutes les sources sont lancées.
+        sources_selectionnees : clés des sources à lancer (None = toutes).
+        do_clean              : supprime data/raw/ et data/processed/ avant collecte.
+        do_aggregate          : lance aggregate_clean.py après la collecte.
     """
     debut_global = time.time()
 
@@ -199,30 +256,60 @@ def main(sources_selectionnees: list[str] | None = None) -> None:
         sources_a_lancer = SOURCES
 
     log.info("=" * 60)
-    log.info("DEBUT IMPORT — inflation-tracker (C4, issue #9)")
-    log.info(f"Sources : {[s['key'] for s in sources_a_lancer]}")
+    log.info("DEBUT PIPELINE — inflation-tracker (C4, issue #9)")
+    log.info(f"Sources   : {[s['key'] for s in sources_a_lancer]}")
+    log.info(f"Nettoyage : {'OUI' if do_clean else 'NON (--no-clean)'}")
+    log.info(f"Agrégation: {'OUI' if do_aggregate else 'NON (--no-aggregate)'}")
     log.info("=" * 60)
 
+    # --- Étape 0 : nettoyage des anciens fichiers output ---
+    if do_clean:
+        log.info("ÉTAPE 0 — Nettoyage data/raw/ et data/processed/")
+        clean_output_files()
+        log.info("")
+
+    # --- Étapes 1-N : collecte des sources ---
     rapports = []
     for source in sources_a_lancer:
         rapport = run_source(source)
         rapports.append(rapport)
-        log.info("")   # ligne vide entre chaque source pour lisibilité
+        log.info("")
+
+    # --- Étape finale : agrégation et normalisation → inflation_unified ---
+    if do_aggregate:
+        log.info("ÉTAPE FINALE — Agrégation et normalisation → inflation_unified")
+        rapport_agg = run_aggregate()
+        rapports.append(rapport_agg)
+        log.info("")
 
     print_rapport(rapports, debut_global)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Orchestrateur d'import inflation-tracker — C4"
+        description="Pipeline complet inflation-tracker : nettoyage → collecte → agrégation"
     )
     parser.add_argument(
         "--source",
-        nargs="+",   # accepte une ou plusieurs valeurs : --source ecb insee
+        nargs="+",
         choices=[s["key"] for s in SOURCES],
         help="Source(s) à importer. Sans argument = toutes les sources.",
-        metavar="SOURCE"
+        metavar="SOURCE",
+    )
+    parser.add_argument(
+        "--no-clean",
+        action="store_true",
+        help="Ne pas supprimer data/raw/ et data/processed/ avant la collecte.",
+    )
+    parser.add_argument(
+        "--no-aggregate",
+        action="store_true",
+        help="Ne pas lancer aggregate_clean.py après la collecte.",
     )
     args = parser.parse_args()
 
-    main(sources_selectionnees=args.source)
+    main(
+        sources_selectionnees=args.source,
+        do_clean=not args.no_clean,
+        do_aggregate=not args.no_aggregate,
+    )

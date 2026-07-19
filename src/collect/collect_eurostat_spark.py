@@ -144,15 +144,19 @@ log = logging.getLogger(__name__)
 # Configuration
 # =============================================================================
 # URL Eurostat API bulk download — format TSV compressé GZIP
-# dataset prc_hicp_manr = HICP monthly rates of change (taux de variation mensuel)
+# dataset prc_hicp_midx = HICP monthly indices (indices mensuels base 2015=100)
+# Changement : prc_hicp_manr (taux RCH_A %) → prc_hicp_midx (indices INX_A_AVG)
+# Raison : inflation_unified doit contenir des indices base 100=2015 cohérents
+# avec INSEE (base 2015) et DATAGOUV (IX base 2015) pour que les comparaisons
+# et le modèle Prophet soient valides. Mélanger indices et taux = garbage in.
 EUROSTAT_URL = (
     "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/"
-    "data/prc_hicp_manr/?format=TSV&compressed=true"
+    "data/prc_hicp_midx/?format=TSV&compressed=true"
 )
 
-# On filtre sur RCH_A (Annual Rate of Change) — c'est l'indicateur d'inflation
-# comparable avec les données ECB et INSEE du projet
-UNIT_FILTRE = "RCH_A"
+# I15 = indice base 2015=100 (code Eurostat pour prc_hicp_midx)
+# Attention : prc_hicp_midx utilise "I15", pas "INX_A_AVG" (code des moyennes annuelles)
+UNIT_FILTRE = "I15"
 
 # Connexion PostgreSQL
 DB_URL = SAUrl.create(
@@ -191,7 +195,7 @@ def download_bulk() -> Path:
     )
     r.raise_for_status()
 
-    raw_path = RAW_DIR / "prc_hicp_manr_raw.tsv.gz"
+    raw_path = RAW_DIR / "prc_hicp_midx_raw.tsv.gz"
 
     # Écriture en mode binaire — le fichier est compressé GZIP
     with open(raw_path, "wb") as f:
@@ -254,7 +258,7 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     # causant un crash "Python worker exited unexpectedly".
     # spark.read.csv() utilise le lecteur JVM natif — aucun Python worker nécessaire.
     log.info("Décompression GZIP → TSV temporaire...")
-    tsv_path = RAW_DIR / "prc_hicp_manr_raw.tsv"
+    tsv_path = RAW_DIR / "prc_hicp_midx_raw.tsv"
     with gzip.open(raw_path, "rb") as f_in:
         with open(tsv_path, "wb") as f_out:
             f_out.write(f_in.read())
@@ -425,7 +429,7 @@ def main():
 
         log.info("=" * 60)
         log.info("COLLECTE EUROSTAT TERMINÉE AVEC SUCCÈS")
-        log.info("  Raw      : data/raw/bigdata_eurostat/prc_hicp_manr_raw.tsv.gz")
+        log.info("  Raw      : data/raw/bigdata_eurostat/prc_hicp_midx_raw.tsv.gz")
         log.info("  Processed: data/processed/bigdata_eurostat/eurostat_clean.csv")
         log.info("  Base     : table eurostat_bulk dans PostgreSQL")
         log.info("=" * 60)
