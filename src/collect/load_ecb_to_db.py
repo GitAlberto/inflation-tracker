@@ -24,9 +24,9 @@ Pourquoi séparer les étapes ?
 Données collectées :
     - Fréquence : mensuelle (M)
     - Pays : FR, DE, ES, IT, PT, NL (6 pays zone euro)
-    - Catégories COICOP : CP01 à CP12 (12 catégories)
-    - Indicateur : taux de variation annuel de l'IPC (ANR)
-    - Volume estimé : 6 pays × 12 catégories × ~350 mois ≈ 25 000 lignes
+    - Catégories COICOP : CP00 (ensemble) + CP01 à CP12 (13 catégories)
+    - Indicateur : indice HICP base 2015=100 (INX) — cohérent avec INSEE et DATAGOUV
+    - Volume estimé : 6 pays × 13 catégories × ~350 mois ≈ 27 000 lignes
 
 Table cible : ecb_hicp_raw (voir src/database/schema.sql)
 Issue GitHub : #4
@@ -119,11 +119,16 @@ PAYS = "FR+DE+ES+IT+PT+NL"
 #   110000 = COICOP 11 — Restaurants et hôtels
 #   120000 = COICOP 12 — Biens et services divers
 COICOP = (
-    "010000+020000+030000+040000+050000+060000"
+    "000000"                                          # 00 — Ensemble (agrégat total)
+    "+010000+020000+030000+040000+050000+060000"
     "+070000+080000+090000+100000+110000+120000"
 )
 
-ECB_URL = f"https://data-api.ecb.europa.eu/service/data/ICP/M.{PAYS}.N.{COICOP}.4.ANR"
+# Changement ANR → INX :
+# ANR (Annual Rate) = taux de variation annuel en % → incompatible avec indices
+# INX (Index)       = indice HICP base 2015=100 → cohérent avec INSEE et DATAGOUV
+# Raison : inflation_unified doit contenir uniquement des indices base 100=2015.
+ECB_URL = f"https://data-api.ecb.europa.eu/service/data/ICP/M.{PAYS}.N.{COICOP}.4.INX"
 
 # =============================================================================
 # Connexion PostgreSQL via SAUrl.create()

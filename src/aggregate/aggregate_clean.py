@@ -68,75 +68,114 @@ DB_URL = SAUrl.create(
 )
 
 # =============================================================================
+# Référentiel COICOP niveau 1 — 13 grandes catégories IPC
+# Ce CTE est injecté dans chaque requête pour normaliser la colonne categorie.
+# Toutes les sources convertiront leur code brut vers ce format "XX - Label".
+# =============================================================================
+_COICOP_CTE = """
+    coicop_ref (code, label) AS (
+        VALUES
+            ('00', '00 - Ensemble'),
+            ('01', '01 - Alimentation et boissons non alcoolisées'),
+            ('02', '02 - Boissons alcoolisées et tabac'),
+            ('03', '03 - Articles d''habillement et chaussures'),
+            ('04', '04 - Logement, eau, gaz, électricité'),
+            ('05', '05 - Ameublement, équipement ménager'),
+            ('06', '06 - Santé'),
+            ('07', '07 - Transports'),
+            ('08', '08 - Communications'),
+            ('09', '09 - Loisirs et culture'),
+            ('10', '10 - Enseignement'),
+            ('11', '11 - Restaurants et hôtels'),
+            ('12', '12 - Biens et services divers')
+    )
+"""
+
+# =============================================================================
 # Requêtes SQL d'agrégation par source
-# Chaque requête sélectionne les colonnes et les mappe vers inflation_unified.
-# ON CONFLICT DO NOTHING assure l'idempotence grâce à la contrainte UNIQUE.
+# Chaque requête :
+#   1. Extrait le code COICOP à 2 chiffres propre à chaque format source
+#   2. Filtre au niveau 1 uniquement (pas les sous-catégories)
+#   3. Joint avec coicop_ref pour obtenir le libellé normalisé
+#   4. INSERT ... ON CONFLICT DO NOTHING (idempotent)
 # =============================================================================
 
-# ECB : time_period VARCHAR "YYYY-MM" → DATE via concat + cast
-# ref_area = code pays, coicop = code COICOP, obs_value = valeur
-SQL_ECB = """
+# ECB : coicop stocké en 6 chiffres zero-padded (ex: "000000", "010000")
+# Niveau 1 = 4 derniers chiffres sont "0000" → SUBSTRING(coicop, 1, 2) = code COICOP
+SQL_ECB = f"""
+WITH {_COICOP_CTE}
 INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
 SELECT
-    (time_period || '-01')::DATE  AS date_obs,
-    ref_area                      AS pays,
-    coicop                        AS categorie,
-    obs_value                     AS valeur,
-    'ECB'                         AS source
-FROM ecb_hicp_raw
-WHERE obs_value IS NOT NULL
-  AND time_period IS NOT NULL
-  AND ref_area    IS NOT NULL
-  AND coicop      IS NOT NULL
+    (e.time_period || '-01')::DATE  AS date_obs,
+    e.ref_area                      AS pays,
+    r.label                         AS categorie,
+    e.obs_value                     AS valeur,
+    'ECB'                           AS source
+FROM ecb_hicp_raw e
+JOIN coicop_ref r ON r.code = SUBSTRING(e.coicop, 1, 2)
+WHERE e.obs_value   IS NOT NULL
+  AND e.time_period IS NOT NULL
+  AND e.ref_area    IS NOT NULL
+  AND e.coicop      IS NOT NULL
+  AND RIGHT(e.coicop, 4) = '0000'   -- niveau 1 seulement (ex: "010000", pas "011000")
 ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 """
 
-# INSEE : date_obs est déjà DATE, valeur est l'indice IPC base 2015
-# pays fixé à 'FR' (données France uniquement)
-SQL_INSEE = """
+# INSEE : categorie déjà au format "XX - Label" (ex: "01 - Alimentation...")
+# On joint sur les 2 premiers caractères pour garantir la cohérence du libellé
+SQL_INSEE = f"""
+WITH {_COICOP_CTE}
 INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
 SELECT
-    date_obs,
-    'FR'        AS pays,
-    categorie,
-    valeur,
-    'INSEE'     AS source
-FROM insee_ipc
-WHERE valeur   IS NOT NULL
-  AND categorie IS NOT NULL
+    i.date_obs,
+    'FR'    AS pays,
+    r.label AS categorie,
+    i.valeur,
+    'INSEE' AS source
+FROM insee_ipc i
+JOIN coicop_ref r ON r.code = SUBSTRING(i.categorie, 1, 2)
+WHERE i.valeur    IS NOT NULL
+  AND i.categorie IS NOT NULL
 ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 """
 
-# DATAGOUV : même structure qu'INSEE — séries longues IPC France depuis 1996
-# source déjà présente dans la table mais on uniformise à 'DATAGOUV'
-SQL_DATAGOUV = """
+# DATAGOUV : categorie = codes COICOP 2018 bruts (ex: "00", "01", "01.1", "01.1.1.1")
+# Filtre : codes exactement 2 chiffres = niveau 1 seulement
+SQL_DATAGOUV = f"""
+WITH {_COICOP_CTE}
 INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
 SELECT
-    date_obs,
-    'FR'        AS pays,
-    categorie,
-    valeur,
-    'DATAGOUV'  AS source
-FROM datagouv_ipc
-WHERE valeur   IS NOT NULL
-  AND categorie IS NOT NULL
+    d.date_obs,
+    'FR'       AS pays,
+    r.label    AS categorie,
+    d.valeur,
+    'DATAGOUV' AS source
+FROM datagouv_ipc d
+JOIN coicop_ref r ON r.code = d.categorie
+WHERE d.valeur    IS NOT NULL
+  AND d.categorie IS NOT NULL
+  AND d.categorie ~ '^[0-9]{{2}}$'   -- niveau 1 : exactement 2 chiffres (ex: "01", pas "01.1")
 ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 """
 
-# EUROSTAT : pays et date_obs déjà au bon format, coicop = catégorie HICP
-# Filtre : valeur NOT NULL (les NaN ont déjà été supprimés à l'import)
-SQL_EUROSTAT = """
+# EUROSTAT : coicop au format "CP00", "CP01", "CP0111"...
+# Niveau 1 = exactement 4 caractères "CP" + 2 chiffres (ex: "CP01", pas "CP0111")
+# SUBSTRING(coicop, 3, 2) extrait les 2 chiffres après "CP"
+SQL_EUROSTAT = f"""
+WITH {_COICOP_CTE}
 INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
 SELECT
-    date_obs,
-    pays,
-    coicop      AS categorie,
-    valeur,
-    'EUROSTAT'  AS source
-FROM eurostat_bulk
-WHERE valeur IS NOT NULL
-  AND pays   IS NOT NULL
-  AND coicop IS NOT NULL
+    e.date_obs,
+    e.pays,
+    r.label      AS categorie,
+    e.valeur,
+    'EUROSTAT'   AS source
+FROM eurostat_bulk e
+JOIN coicop_ref r ON r.code = SUBSTRING(e.coicop, 3, 2)
+WHERE e.valeur IS NOT NULL
+  AND e.pays   IS NOT NULL
+  AND e.coicop IS NOT NULL
+  AND e.coicop ~ '^CP[0-9]{{2}}$'   -- niveau 1 : "CP" + exactement 2 chiffres
 ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 """
 

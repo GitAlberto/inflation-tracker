@@ -1,0 +1,11 @@
+[theme]
+# Thème financier professionnel — inflation-tracker
+# Or comme couleur primaire (sliders, boutons, checkboxes, liens)
+primaryColor        = "#c9a84c"
+# Fond principal — blanc légèrement bleuté
+backgroundColor     = "#f5f7fa"
+# Fond secondaire (inputs, code blocks)
+secondaryBackgroundColor = "#eaedf2"
+# Texte — ardoise profonde
+textColor           = "#1c2e40"
+font                = "sans serif"
