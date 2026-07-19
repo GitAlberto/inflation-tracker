@@ -1,5 +1,8 @@
 services:
 
+  # =========================================================================
+  # Base de données PostgreSQL
+  # =========================================================================
   postgres:
     image: postgres:15
     container_name: inflation_postgres
@@ -13,7 +16,50 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d inflation_tracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # =========================================================================
+  # API data REST (C5) — exposition d'inflation_unified
+  # =========================================================================
+  api_data:
+    build:
+      context: .
+      dockerfile: api/data/Dockerfile
+    container_name: inflation_api_data
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # =========================================================================
+  # API modèle Prophet (C9/C11) — prédictions + métriques Prometheus
+  # =========================================================================
+  api_model:
+    build:
+      context: .
+      dockerfile: api/model/Dockerfile
+    container_name: inflation_api_model
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8002:8002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Modèles .pkl montés en lecture seule — générés hors container
+      - ./model:/app/model:ro
+
+  # =========================================================================
+  # Prometheus — scraping métriques (C11/C20)
+  # =========================================================================
   prometheus:
     image: prom/prometheus:latest
     container_name: inflation_prometheus
@@ -23,14 +69,22 @@ services:
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
     ports:
       - "9090:9090"
+    depends_on:
+      - api_model
+      - api_data
 
+  # =========================================================================
+  # Grafana — dashboards monitoring (C20)
+  # =========================================================================
   grafana:
     image: grafana/grafana:latest
     container_name: inflation_grafana
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/model_dashboard.json
     volumes:
+      # Provisioning auto datasource + dashboard au démarrage
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       - grafana_data:/var/lib/grafana

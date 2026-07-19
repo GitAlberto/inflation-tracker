@@ -129,10 +129,13 @@ def test_list_available_retourne_liste():
     assert isinstance(result, list)   # toujours une liste, jamais None
 
 
-def test_list_available_13_categories():
-    """13 catégories IPC France doivent être disponibles après train.py."""
+def test_list_available_12_categories():
+    """12 catégories IPC France (COICOP 00-11) doivent être disponibles après train.py.
+
+    'Ensemble hors énergie' éliminé lors du nettoyage ETL — non standard COICOP niveau 1.
+    """
     cats = list_available()
-    assert len(cats) == 13   # 13 modèles Prophet entraînés en C8
+    assert len(cats) == 12   # 12 catégories COICOP standard (00 à 11)
 
 
 def test_list_available_contient_ensemble():

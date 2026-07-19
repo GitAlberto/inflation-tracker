@@ -77,10 +77,10 @@ def test_categories_contains_ensemble():
 
 
 def test_categories_count():
-    """L'API doit exposer les 13 catégories INSEE entraînées."""
+    """L'API doit exposer les 12 catégories COICOP standard entraînées."""
     resp = client.get("/api/categories")
     assert resp.status_code == 200
-    assert len(resp.json()) == 13          # 13 modèles Prophet entraînés en C8
+    assert len(resp.json()) == 12          # 12 catégories COICOP 00-11 (Ensemble hors énergie supprimé)
 
 
 # =============================================================================
@@ -95,7 +95,7 @@ def test_metrics_structure():
     assert "nb_categories" in data         # nombre de modèles
     assert "eval_period" in data           # période d'évaluation
     assert "metrics" in data               # dict de métriques par catégorie
-    assert data["nb_categories"] == 13     # 13 catégories entraînées
+    assert data["nb_categories"] == 12     # 12 catégories COICOP standard
 
 
 def test_metrics_categorie_valide():
@@ -182,7 +182,7 @@ def test_predict_toutes():
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, dict)          # réponse de type dict
-    assert len(data) == 13                 # 13 catégories Prophet
+    assert len(data) == 12                 # 12 catégories COICOP standard
 
 
 @requires_models

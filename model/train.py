@@ -28,6 +28,87 @@ import joblib                                           # sérialisation des mod
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL as SAUrl
+
+
+# =============================================================================
+# Bootstrap CmdStan AVANT l'import de Prophet
+# =============================================================================
+# Prophet 1.1+ embarque son propre CmdStan dans prophet/stan_model/cmdstan-X.Y.Z/.
+# cmdstanpy (wrapper Python) cherche CmdStan dans ~/.cmdstan/ par défaut.
+# Si CMDSTAN n'est pas défini dans l'environnement, on le pointe automatiquement
+# vers le binaire bundlé du venv actif — aucune commande manuelle requise.
+def _bootstrap_cmdstan() -> None:
+    """Corrige le conflit Prophet bundled CmdStan vs cmdstanpy ≥ 1.3.
+
+    Prophet 1.1.6 appelle cmdstanpy.set_cmdstan_path() avec son CmdStan bundlé
+    (prophet/stan_model/cmdstan-2.33.1). Depuis cmdstanpy 1.3, cette fonction
+    valide la présence d'un makefile que le bundled ne contient pas.
+
+    Quand le bundled est invalide (pas de makefile) mais qu'une installation
+    complète existe dans ~/.cmdstan, on :
+      1. Préconfigure cmdstanpy avec la bonne installation
+      2. Installe un garde sur set_cmdstan_path() pour ignorer les appels
+         ultérieurs avec un chemin sans makefile (celui de Prophet)
+    """
+    if os.environ.get("CMDSTAN"):
+        return   # déjà configuré explicitement — on ne touche pas
+
+    try:
+        import importlib.util
+        import cmdstanpy
+
+        spec = importlib.util.find_spec("prophet")
+        if spec is None or spec.origin is None:
+            print("[bootstrap] WARNING : Prophet introuvable dans cet environnement")
+            return
+
+        prophet_dir   = Path(spec.origin).parent
+        bundled       = prophet_dir / "stan_model" / "cmdstan-2.33.1"
+        bundled_valid = (bundled / "makefile").exists()
+
+        if bundled_valid:
+            return   # cmdstanpy <1.3 ou bundled complet — Prophet gère seul
+
+        # bundled invalide (makefile absent) → chercher ~/.cmdstan/cmdstan-*/
+        user_dir   = Path.home() / ".cmdstan"
+        valid_path = None
+        if user_dir.exists():
+            for candidate in sorted(user_dir.glob("cmdstan-*/"), reverse=True):
+                if (candidate / "makefile").exists():
+                    valid_path = candidate
+                    break
+
+        if valid_path is None:
+            print("[bootstrap] WARNING : aucun CmdStan valide trouvé")
+            print("[bootstrap]   → activez le venv : source .venv/Scripts/activate")
+            return
+
+        # Préconfigurer cmdstanpy avec le bon chemin AVANT que Prophet tente de l'écraser
+        cmdstanpy.set_cmdstan_path(str(valid_path))
+        print(f"[bootstrap] CMDSTAN → {valid_path}")
+
+        # prophet_model.bin a été compilé avec CmdStan 2.33.1 et dépend de ses DLLs TBB.
+        # Sans cela : STATUS_DLL_NOT_FOUND (code 3221225781) sur Windows.
+        tbb_dir = bundled / "stan" / "lib" / "stan_math" / "lib" / "tbb"
+        if tbb_dir.exists():
+            os.environ["PATH"] = str(tbb_dir) + os.pathsep + os.environ.get("PATH", "")
+            print(f"[bootstrap] TBB     → {tbb_dir}")
+
+        # Garde : ignorer tout appel ultérieur de set_cmdstan_path avec un chemin
+        # sans makefile (c'est le bundled invalide que Prophet va passer)
+        _real_set = cmdstanpy.set_cmdstan_path
+        def _guarded_set(path: str) -> None:
+            if not (Path(path) / "makefile").exists():
+                return   # chemin sans makefile = bundled invalide → ignorer
+            _real_set(path)
+        cmdstanpy.set_cmdstan_path = _guarded_set
+
+    except Exception as exc:
+        print(f"[bootstrap] WARNING : {exc}")
+
+
+_bootstrap_cmdstan()   # doit s'exécuter avant 'from prophet import Prophet'
+
 from prophet import Prophet                             # modèle retenu après benchmark C7
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
@@ -196,6 +277,35 @@ def train_one(df_cat: pd.DataFrame, categorie: str) -> tuple[Prophet, dict]:
 
 
 # =============================================================================
+# Nettoyage des anciens modèles
+# =============================================================================
+
+def clean_old_models() -> None:
+    """
+    Supprime tous les .pkl et metrics.json du dossier model/ avant réentraînement.
+
+    Garantit qu'aucun modèle obsolète (ex: 'Ensemble hors énergie' supprimé de
+    inflation_unified) ne reste sur disque après un réentraînement partiel.
+    """
+    supprimés = 0
+
+    # Suppression des modèles sérialisés
+    for pkl in MODEL_DIR.glob("*.pkl"):
+        pkl.unlink()
+        log.info(f"  Supprimé : {pkl.name}")
+        supprimés += 1
+
+    # Suppression du fichier de métriques
+    metrics_path = MODEL_DIR / "metrics.json"
+    if metrics_path.exists():
+        metrics_path.unlink()
+        log.info(f"  Supprimé : {metrics_path.name}")
+        supprimés += 1
+
+    log.info(f"Nettoyage terminé — {supprimés} fichier(s) supprimé(s)")
+
+
+# =============================================================================
 # Boucle principale
 # =============================================================================
 
@@ -204,6 +314,11 @@ def main() -> None:
     log.info("=" * 60)
     log.info("DEBUT ENTRAINEMENT C8 — Prophet × 13 catégories INSEE")
     log.info("=" * 60)
+
+    # Nettoyage des anciens .pkl et metrics.json avant tout réentraînement
+    log.info("ÉTAPE 0 — Nettoyage des anciens modèles")
+    clean_old_models()
+    log.info("")
 
     # Connexion PostgreSQL et chargement des 13 séries
     engine = get_engine()
