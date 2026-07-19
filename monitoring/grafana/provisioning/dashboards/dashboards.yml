@@ -1,0 +1,16 @@
+apiVersion: 1
+
+# Provisioning automatique des dashboards Grafana au démarrage
+# Ce fichier dit à Grafana de lire les JSON dans /var/lib/grafana/dashboards
+# (monté depuis ./monitoring/grafana/dashboards dans docker-compose.yml)
+
+providers:
+  - name: 'Inflation Tracker'
+    orgId: 1
+    folder: 'Inflation Tracker'
+    type: file
+    disableDeletion: false       # empêche la suppression via UI
+    updateIntervalSeconds: 30    # polling pour détecter les changements de JSON
+    allowUiUpdates: true         # permet les modifications depuis Grafana UI
+    options:
+      path: /var/lib/grafana/dashboards

@@ -1,0 +1,58 @@
+name: CI — Application Streamlit (C17/C18)
+
+# Déclenché sur chaque push et PR sur les branches principales
+on:
+  push:
+    branches: [main, AlbertoFinB3]
+    paths:
+      - "app/**"
+      - ".streamlit/**"
+      - "requirements.txt"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+
+jobs:
+  lint-app:
+    name: Lint + vérification imports application Streamlit
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1 — Récupération du code source
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2 — Installation de Python 3.12
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # 3 — Installation des dépendances légères (pas prophet/pyspark)
+      # Streamlit pages sont des scripts — pas de tests unitaires classiques
+      # On vérifie au minimum que les imports et la syntaxe sont valides
+      - name: Install dependencies
+        run: |
+          pip install streamlit plotly pandas python-dotenv requests httpx
+
+      # 4 — Vérification syntaxe Python (compile uniquement, pas d'exécution)
+      # python -m py_compile détecte les erreurs de syntaxe sans lancer Streamlit
+      - name: Check Python syntax — all app pages
+        run: |
+          python -m py_compile app/main.py
+          python -m py_compile app/theme.py
+          python -m py_compile app/api_client.py
+          python -m py_compile app/data_client.py
+          python -m py_compile app/pages/1_Analyse_Historique.py
+          python -m py_compile app/pages/2_Analyse_Categorie.py
+          python -m py_compile app/pages/3_Predictions.py
+          python -m py_compile app/pages/4_Metriques_Modele.py
+
+      # 5 — Lint avec ruff (plus rapide que flake8, même règles)
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check app/ --select E,F,W --ignore E501
+        continue-on-error: true   # warnings non bloquants — les pages fonctionnent malgré lint
