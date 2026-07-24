@@ -20,7 +20,7 @@ ROOT = Path(__file__).parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.data_client import get_categories, get_inflation, get_pays, get_sources
+from app.data_client import get_categories, get_inflation, get_sources
 from app.theme import inject_theme
 
 st.set_page_config(page_title="Analyse Historique", page_icon="📊", layout="wide")
@@ -36,13 +36,12 @@ st.caption("Données IPC — INSEE, BCE, Eurostat, data.gouv — France et zone 
 with st.sidebar:
     st.header("Filtres")
 
+    # Périmètre fixé à la France — toutes les sources sont filtrées geo=FR à la collecte
+    pays = "FR"
+
     # Sélection de la source
     sources = get_sources() or ["INSEE", "ECB", "EUROSTAT", "DATAGOUV"]
     source = st.selectbox("Source de données", sources, index=0)
-
-    # Sélection du pays (dépend de la source)
-    pays_list = get_pays() or ["FR"]
-    pays = st.selectbox("Pays", sorted(pays_list), index=sorted(pays_list).index("FR") if "FR" in pays_list else 0)
 
     # Sélection des catégories (multi-sélection)
     cats = get_categories(source=source) or []

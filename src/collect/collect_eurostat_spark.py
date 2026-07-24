@@ -293,10 +293,14 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
                 .withColumn("geo",    F.split(F.col("cle_composite"), ",")[3])
                 .drop("cle_composite"))
 
-    # --- Filtrage sur unit=RCH_A AVANT le dépivotage ---
-    # Réduire les données avant le stack() pour gagner en performance
+    # --- Filtrage unit + pays AVANT le dépivotage ---
+    # Double filtre en amont du stack() pour réduire le volume traité par Spark
     df_spark = df_spark.filter(F.col("unit") == UNIT_FILTRE)
     log.info(f"Filtrage unit={UNIT_FILTRE} : {df_spark.count()} lignes conservées")
+
+    # Périmètre France uniquement — les 26 autres pays UE sont hors scope du projet
+    df_spark = df_spark.filter(F.col("geo") == "FR")
+    log.info(f"Filtrage geo=FR : {df_spark.count()} lignes conservées")
 
     # --- Dépivotage (wide → long) avec stack() ---
     # Les colonnes de dates sont toutes celles sauf freq, unit, coicop, geo

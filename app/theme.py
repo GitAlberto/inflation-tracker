@@ -136,6 +136,16 @@ section[data-testid="stSidebar"] hr {
     margin: 0.6rem 0 !important;
 }
 
+/* Slider — piste active et poignées en gold */
+div[data-testid="stSlider"] > div > div > div > div {
+    background-color: #c9a84c !important;
+}
+div[data-testid="stSlider"] span[role="slider"] {
+    background-color: #c9a84c !important;
+    border-color: #c9a84c !important;
+    box-shadow: 0 0 0 4px rgba(201, 168, 76, 0.18) !important;
+}
+
 /* ================================================================
    CONTENU PRINCIPAL — typographie
 ================================================================ */

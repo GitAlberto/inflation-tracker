@@ -90,10 +90,13 @@ def get_tendance(
         return None
 
 
-def get_pays() -> list[str] | None:
-    """Retourne la liste de tous les pays disponibles."""
+def get_pays(source: str | None = None) -> list[str] | None:
+    """Retourne la liste des pays disponibles, filtrable par source."""
+    params = {}
+    if source:
+        params["source"] = source
     try:
-        r = requests.get(f"{DATA_API_URL}/api/inflation/pays", timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/inflation/pays", params=params, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json().get("pays", [])
     except requests.RequestException:

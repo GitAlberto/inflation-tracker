@@ -102,7 +102,7 @@ log = logging.getLogger(__name__)
 # L'opérateur "+" dans l'URL signifie "OU" → l'API retourne toutes les séries
 # correspondant à chaque combinaison pays × catégorie COICOP
 # =============================================================================
-PAYS = "FR+DE+ES+IT+PT+NL"
+PAYS = "FR"   # périmètre France uniquement — cohérent avec les autres sources
 
 # Dans le dataset ECB ICP, les catégories COICOP sont encodées en 6 chiffres :
 #   000000 = tous articles (agrégat total) — c'était l'ancienne URL
