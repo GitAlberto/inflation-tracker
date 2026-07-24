@@ -121,11 +121,17 @@ def get_tendance(
 
 
 @router.get("/pays")
-def get_pays(db: Session = Depends(get_db)):
-    """Liste des codes pays disponibles dans inflation_unified."""
-    rows = db.execute(
-        text("SELECT DISTINCT pays FROM inflation_unified ORDER BY pays")
-    ).fetchall()
+def get_pays(source: str | None = None, db: Session = Depends(get_db)):
+    """Liste des codes pays disponibles, filtrable par source."""
+    if source:
+        rows = db.execute(
+            text("SELECT DISTINCT pays FROM inflation_unified WHERE source = :source ORDER BY pays"),
+            {"source": source.upper()},
+        ).fetchall()
+    else:
+        rows = db.execute(
+            text("SELECT DISTINCT pays FROM inflation_unified ORDER BY pays")
+        ).fetchall()
     return {"pays": [r.pays for r in rows]}
 
 
