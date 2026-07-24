@@ -20,7 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Security
+
+from api.model.auth import verify_key
 
 # Import des fonctions de prédiction depuis le package model/
 # Fonctionne car model/__init__.py existe et le projet est lancé depuis la racine
@@ -39,7 +41,8 @@ from api.model.schemas import (
 # Chemin vers metrics.json — défini une seule fois pour tous les endpoints
 METRICS_PATH = Path(__file__).parent.parent.parent.parent / "model" / "metrics.json"
 
-router = APIRouter(tags=["predictions"])
+# dependencies=[Security(verify_key)] protège toutes les routes de ce router (C9)
+router = APIRouter(tags=["predictions"], dependencies=[Security(verify_key)])
 
 
 # =============================================================================

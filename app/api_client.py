@@ -25,11 +25,15 @@ load_dotenv(ROOT / ".env", override=True)
 
 # URL de base de l'API modèle — surchargeable via .env pour le déploiement
 MODEL_API_URL = os.getenv("MODEL_API_URL", "http://localhost:8002")
+# Clé API — lue depuis .env, envoyée dans chaque requête via header X-API-Key (C9/C10)
+_API_KEY = os.getenv("API_KEY", "")
+# Header d'authentification injecté dans toutes les requêtes protégées
+_HEADERS = {"X-API-Key": _API_KEY}
 
 # Timeout standard (secondes) pour les appels rapides (health, categories, metrics)
 _TIMEOUT_SHORT = int(os.getenv("MODEL_API_TIMEOUT", "10"))
 
-# Timeout étendu pour predict_all (chargement de 13 modèles en mémoire)
+# Timeout étendu pour predict_all (chargement de 12 modèles en mémoire)
 _TIMEOUT_LONG = max(_TIMEOUT_SHORT, 60)
 
 
@@ -66,7 +70,7 @@ def get_categories() -> list[str] | None:
         ou None si erreur
     """
     try:
-        resp = requests.get(f"{MODEL_API_URL}/api/categories", timeout=_TIMEOUT_SHORT)
+        resp = requests.get(f"{MODEL_API_URL}/api/categories", headers=_HEADERS, timeout=_TIMEOUT_SHORT)
         resp.raise_for_status()
         return resp.json()   # liste de strings
     except requests.RequestException:
@@ -86,7 +90,7 @@ def get_metrics() -> dict | None:
         ou None si erreur
     """
     try:
-        resp = requests.get(f"{MODEL_API_URL}/api/metrics", timeout=_TIMEOUT_SHORT)
+        resp = requests.get(f"{MODEL_API_URL}/api/metrics", headers=_HEADERS, timeout=_TIMEOUT_SHORT)
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException:
@@ -107,6 +111,7 @@ def get_metrics_categorie(categorie: str) -> dict | None:
     try:
         resp = requests.get(
             f"{MODEL_API_URL}/api/metrics/{categorie}",
+            headers=_HEADERS,
             timeout=_TIMEOUT_SHORT,
         )
         resp.raise_for_status()
@@ -135,7 +140,8 @@ def predict_categorie(categorie: str, horizon: int = 12) -> dict | None:
     try:
         resp = requests.get(
             f"{MODEL_API_URL}/api/predict/{categorie}",
-            params={"horizon": horizon},   # paramètre query string
+            params={"horizon": horizon},
+            headers=_HEADERS,
             timeout=_TIMEOUT_SHORT,
         )
         resp.raise_for_status()
@@ -162,7 +168,8 @@ def predict_all(horizon: int = 12) -> dict | None:
         resp = requests.get(
             f"{MODEL_API_URL}/api/predict",
             params={"horizon": horizon},
-            timeout=_TIMEOUT_LONG,   # timeout étendu : 13 modèles à charger
+            headers=_HEADERS,
+            timeout=_TIMEOUT_LONG,   # timeout étendu : 12 modèles à charger
         )
         resp.raise_for_status()
         return resp.json()

@@ -19,14 +19,3 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:8002"]
 
-  # API data REST (C5) — si prometheus-client est ajouté ultérieurement
-  - job_name: "inflation_data_api"
-    metrics_path: "/metrics-prometheus"
-    static_configs:
-      - targets: ["host.docker.internal:8001"]
-
-  # Application Streamlit (C17/C20) — métriques applicatives
-  - job_name: "inflation_app"
-    metrics_path: "/metrics-prometheus"
-    static_configs:
-      - targets: ["host.docker.internal:8501"]

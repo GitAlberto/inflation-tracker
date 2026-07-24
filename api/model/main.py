@@ -72,7 +72,7 @@ app = FastAPI(
     title="Inflation Tracker — API Modèle",
     description=(
         "API REST exposant les prédictions du modèle Prophet "
-        "entraîné sur l'IPC France INSEE (13 catégories, base 100 = 2015). "
+        "entraîné sur l'IPC France INSEE (12 catégories COICOP 00-11, base 100 = 2015). "
         "Métriques Prometheus disponibles sur /metrics-prometheus."
     ),
     version="1.0.0",

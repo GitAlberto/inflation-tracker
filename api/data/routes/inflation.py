@@ -6,14 +6,16 @@ Issue GitHub : #11
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Security
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+from api.data.auth import verify_key
 from api.data.database import get_db
 from api.data.schemas import InflationResponse, InflationPoint
 
-router = APIRouter(prefix="/inflation", tags=["inflation"])
+# dependencies=[Security(verify_key)] protège toutes les routes de ce router (C5)
+router = APIRouter(prefix="/inflation", tags=["inflation"], dependencies=[Security(verify_key)])
 
 
 @router.get("", response_model=InflationResponse)

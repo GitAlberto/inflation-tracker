@@ -67,6 +67,7 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus   # stockage persistant des séries temporelles
     ports:
       - "9090:9090"
     depends_on:
@@ -96,3 +97,4 @@ services:
 volumes:
   postgres_data:
   grafana_data:
+  prometheus_data:   # historique Prometheus persistant entre les redémarrages

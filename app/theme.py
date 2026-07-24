@@ -215,7 +215,7 @@ div[data-testid="metric-container"] > label {
 }
 
 [data-testid="stMetricValue"] > div {
-    color: #0b1929 !important;
+    color: #c9a84c !important;
     font-weight: 700 !important;
     font-variant-numeric: tabular-nums !important;
     letter-spacing: -0.02em !important;
