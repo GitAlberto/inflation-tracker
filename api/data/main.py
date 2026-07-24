@@ -34,8 +34,9 @@ app = FastAPI(
     title="Inflation Tracker — API Données",
     description=(
         "API REST exposant les données d'inflation consolidées depuis 5 sources : "
-        "ECB (HICP zone euro), INSEE (IPC France), data.gouv.fr (séries longues), "
-        "Eurostat (27 pays UE — 3.5M lignes), Open Food Facts (prix alimentaires terrain)."
+        "ECB (HICP France), INSEE (IPC France), data.gouv.fr (séries longues), "
+        "Eurostat France (147 002 lignes), Open Food Facts (prix alimentaires terrain). "
+        "Périmètre géographique : France uniquement."
     ),
     version="1.0.0",
     docs_url="/docs",

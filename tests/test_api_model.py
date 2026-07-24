@@ -19,15 +19,23 @@ Issue GitHub : #15 (C9)
 =============================================================================
 """
 
+import os
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from api.model.main import app   # import de l'application FastAPI C9
+# Valeur de repli pour CI (pas de .env) — définie avant l'import pour que
+# load_dotenv(override=True) dans auth.py ne la trouve pas dans un env vide
+os.environ.setdefault("API_KEY", "test-key")
 
-# Client de test FastAPI — simule des requêtes HTTP sans démarrer un serveur réel
-client = TestClient(app)
+from api.model.main import app   # noqa: E402  — import de l'application FastAPI C9
+
+# Lire la clé effective APRÈS que load_dotenv(override=True) ait tourné dans auth.py
+_TEST_KEY = os.getenv("API_KEY", "test-key")
+
+# Toutes les routes protégées par X-API-Key — le client l'envoie par défaut
+client = TestClient(app, headers={"X-API-Key": _TEST_KEY})
 
 # Catégorie valide utilisée dans tous les tests de prédiction
 CAT_VALID = "00 - Ensemble"

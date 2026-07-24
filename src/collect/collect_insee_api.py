@@ -84,8 +84,8 @@ from dotenv import load_dotenv
 # =============================================================================
 ROOT          = Path(__file__).parent.parent.parent
 ENV_PATH      = ROOT / ".env"
-RAW_DIR       = ROOT / "data" / "raw" / "api_insee"
-PROCESSED_DIR = ROOT / "data" / "processed" / "api_insee"
+RAW_DIR       = ROOT / "data" / "raw" / "insee_api"
+PROCESSED_DIR = ROOT / "data" / "processed" / "insee_api"
 
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
@@ -426,8 +426,8 @@ def main() -> None:
 
         log.info("=" * 60)
         log.info("COLLECTE INSEE API TERMINÉE AVEC SUCCÈS")
-        log.info(f"  Raw      : data/raw/api_insee/insee_ipc_raw.xml")
-        log.info(f"  Processed: data/processed/api_insee/insee_ipc_clean.csv")
+        log.info(f"  Raw      : data/raw/insee_api/insee_ipc_raw.xml")
+        log.info(f"  Processed: data/processed/insee_api/insee_ipc_clean.csv")
         log.info(f"  Base     : table insee_ipc dans PostgreSQL")
         log.info(f"  Lignes   : {len(df_clean)}")
         log.info("=" * 60)

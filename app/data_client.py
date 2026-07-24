@@ -20,8 +20,12 @@ load_dotenv(ROOT / ".env", override=True)
 
 # URL de base de l'API data — configurable via .env
 DATA_API_URL = os.getenv("DATA_API_URL", "http://localhost:8001")
+# Clé API — lue depuis .env, envoyée dans chaque requête via header X-API-Key (C5/C10)
+_API_KEY = os.getenv("API_KEY", "")
 # 30s par défaut — SELECT DISTINCT sur 3.68M lignes peut dépasser 10s sans index
 _TIMEOUT = int(os.getenv("DATA_API_TIMEOUT", "30"))
+# Header d'authentification injecté dans toutes les requêtes protégées
+_HEADERS = {"X-API-Key": _API_KEY}
 
 
 def get_health() -> dict | None:
@@ -58,7 +62,7 @@ def get_inflation(
     if date_fin:   params["date_fin"] = date_fin
 
     try:
-        r = requests.get(f"{DATA_API_URL}/api/inflation", params=params, timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/inflation", params=params, headers=_HEADERS, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json()
     except requests.RequestException:
@@ -83,7 +87,7 @@ def get_tendance(
     if date_fin:   params["date_fin"] = date_fin
 
     try:
-        r = requests.get(f"{DATA_API_URL}/api/inflation/tendance", params=params, timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/inflation/tendance", params=params, headers=_HEADERS, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json()
     except requests.RequestException:
@@ -96,7 +100,7 @@ def get_pays(source: str | None = None) -> list[str] | None:
     if source:
         params["source"] = source
     try:
-        r = requests.get(f"{DATA_API_URL}/api/inflation/pays", params=params, timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/inflation/pays", params=params, headers=_HEADERS, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json().get("pays", [])
     except requests.RequestException:
@@ -106,7 +110,7 @@ def get_pays(source: str | None = None) -> list[str] | None:
 def get_sources() -> list[str] | None:
     """Retourne la liste des sources de données disponibles."""
     try:
-        r = requests.get(f"{DATA_API_URL}/api/inflation/sources", timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/inflation/sources", headers=_HEADERS, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json().get("sources", [])
     except requests.RequestException:
@@ -118,7 +122,7 @@ def get_categories(source: str | None = None) -> list[str] | None:
     params = {}
     if source: params["source"] = source
     try:
-        r = requests.get(f"{DATA_API_URL}/api/inflation/categories", params=params, timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/inflation/categories", params=params, headers=_HEADERS, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json().get("categories", [])
     except requests.RequestException:
@@ -130,7 +134,7 @@ def get_prix_alimentaires(categorie: str | None = None, limit: int = 500) -> dic
     params = {"limit": limit}
     if categorie: params["categorie"] = categorie
     try:
-        r = requests.get(f"{DATA_API_URL}/api/prix-alimentaires", params=params, timeout=_TIMEOUT)
+        r = requests.get(f"{DATA_API_URL}/api/prix-alimentaires", params=params, headers=_HEADERS, timeout=_TIMEOUT)
         r.raise_for_status()
         return r.json()
     except requests.RequestException:
