@@ -1,0 +1,39 @@
+# Dossiers lourds inutiles dans le build Docker
+.venv/
+data/
+model/
+logs/
+scripts/
+docs/
+preuves/
+monitoring/
+
+# Cache et artefacts Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environnement et secrets
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# Éditeur
+.vscode/
+*.code-workspace
+
+# Fichiers lourds
+*.pkl
+*.csv
+*.xml
+*.tsv
+*.docx
+*.png
+*.jpg
