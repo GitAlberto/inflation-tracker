@@ -10,6 +10,7 @@ class InflationPoint(BaseModel):
     categorie: str
     valeur: Decimal
     source: str
+    base_ref: Optional[str] = None   # '2015' (INSEE/ECB/EUROSTAT) ou '2025' (DATAGOUV rebasé)
 
     model_config = {"from_attributes": True}
 

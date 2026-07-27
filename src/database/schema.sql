@@ -104,8 +104,9 @@ CREATE TABLE inflation_unified (
     date_obs    DATE            NOT NULL,
     pays        VARCHAR(10)     NOT NULL DEFAULT 'FR',
     categorie   VARCHAR(100)    NOT NULL,
-    valeur      NUMERIC(10, 4)  NOT NULL,   -- Base 100 = 2015
+    valeur      NUMERIC(10, 4)  NOT NULL,
     source      VARCHAR(50)     NOT NULL,
+    base_ref    VARCHAR(4)      NOT NULL,   -- Année de la base de référence : '2015' (INSEE/ECB/EUROSTAT) ou '2025' (DATAGOUV rebasé 2025)
     created_at  TIMESTAMP       DEFAULT NOW(),
     UNIQUE (date_obs, pays, categorie, source)
 );

@@ -42,7 +42,7 @@ def get_inflation(
 
     rows = db.execute(
         text(f"""
-            SELECT date_obs, pays, categorie, valeur, source
+            SELECT date_obs, pays, categorie, valeur, source, base_ref
             FROM inflation_unified {where}
             ORDER BY date_obs DESC, pays
             LIMIT :limit OFFSET :offset
@@ -61,6 +61,7 @@ def get_inflation(
                 categorie=r.categorie,
                 valeur=r.valeur,
                 source=r.source,
+                base_ref=r.base_ref,
             )
             for r in rows
         ],
