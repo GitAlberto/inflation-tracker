@@ -25,6 +25,7 @@ Table cible : inflation_unified (voir src/database/schema.sql)
     categorie : VARCHAR(100) NOT NULL       — code COICOP ou libellé catégorie
     valeur    : NUMERIC(10,4) NOT NULL      — valeur de l'indice ou taux
     source    : VARCHAR(50) NOT NULL        — "ECB", "INSEE", "DATAGOUV", "EUROSTAT"
+    base_ref  : VARCHAR(4) NOT NULL         — année de la base de référence : '2015' (INSEE/ECB/EUROSTAT) ou '2025' (DATAGOUV rebasé 2025)
     UNIQUE (date_obs, pays, categorie, source)
 
 Stratégie d'insertion :
@@ -104,13 +105,14 @@ _COICOP_CTE = """
 # Niveau 1 = 4 derniers chiffres sont "0000" → SUBSTRING(coicop, 1, 2) = code COICOP
 SQL_ECB = f"""
 WITH {_COICOP_CTE}
-INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
+INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source, base_ref)
 SELECT
     (e.time_period || '-01')::DATE  AS date_obs,
     e.ref_area                      AS pays,
     r.label                         AS categorie,
     e.obs_value                     AS valeur,
-    'ECB'                           AS source
+    'ECB'                           AS source,
+    '2015'                          AS base_ref   -- indice HICP base 2015=100
 FROM ecb_hicp_raw e
 JOIN coicop_ref r ON r.code = SUBSTRING(e.coicop, 1, 2)
 WHERE e.obs_value   IS NOT NULL
@@ -125,13 +127,14 @@ ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 # On joint sur les 2 premiers caractères pour garantir la cohérence du libellé
 SQL_INSEE = f"""
 WITH {_COICOP_CTE}
-INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
+INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source, base_ref)
 SELECT
     i.date_obs,
     'FR'    AS pays,
     r.label AS categorie,
     i.valeur,
-    'INSEE' AS source
+    'INSEE' AS source,
+    '2015'  AS base_ref   -- IPC France base 2015=100 (référence officielle)
 FROM insee_ipc i
 JOIN coicop_ref r ON r.code = SUBSTRING(i.categorie, 1, 2)
 WHERE i.valeur    IS NOT NULL
@@ -143,13 +146,14 @@ ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 # Filtre : codes exactement 2 chiffres = niveau 1 seulement
 SQL_DATAGOUV = f"""
 WITH {_COICOP_CTE}
-INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
+INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source, base_ref)
 SELECT
     d.date_obs,
     'FR'       AS pays,
     r.label    AS categorie,
     d.valeur,
-    'DATAGOUV' AS source
+    'DATAGOUV' AS source,
+    '2025'     AS base_ref   -- IPC France rebasé 2025 par INSEE (BASE_PER=2025 depuis 2025)
 FROM datagouv_ipc d
 JOIN coicop_ref r ON r.code = d.categorie
 WHERE d.valeur    IS NOT NULL
@@ -163,13 +167,14 @@ ON CONFLICT (date_obs, pays, categorie, source) DO NOTHING
 # SUBSTRING(coicop, 3, 2) extrait les 2 chiffres après "CP"
 SQL_EUROSTAT = f"""
 WITH {_COICOP_CTE}
-INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source)
+INSERT INTO inflation_unified (date_obs, pays, categorie, valeur, source, base_ref)
 SELECT
     e.date_obs,
     e.pays,
     r.label      AS categorie,
     e.valeur,
-    'EUROSTAT'   AS source
+    'EUROSTAT'   AS source,
+    '2015'       AS base_ref   -- HICP indice base 2015=100 (unit=I15)
 FROM eurostat_bulk e
 JOIN coicop_ref r ON r.code = SUBSTRING(e.coicop, 3, 2)
 WHERE e.valeur IS NOT NULL
