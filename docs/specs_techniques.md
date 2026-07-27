@@ -108,9 +108,11 @@ monitoring séparé (métriques Prometheus distinctes par API).
 
 ## Décision technique #3 — Prophet vs LSTM vs ARIMA (C7/C8)
 
-Voir `docs/benchmark.md`. Résumé : Prophet retenu pour sa gestion native de la
-saisonnalité mensuelle, sa robustesse aux valeurs manquantes, et sa lisibilité
-des composantes (tendance + saisonnalité) — critique pour un projet d'analyse économique.
+Voir `veille_C6_final.pdf` — Section 3 (page 10) : tableau comparatif Prophet / ARIMA / LSTM
+sur 10 critères ; Sections 5.1-5.3 (pages 14-16) : justification du choix Prophet.
+Résumé : Prophet retenu pour sa gestion native de la saisonnalité mensuelle,
+sa robustesse aux valeurs manquantes, et sa lisibilité des composantes
+(tendance + saisonnalité) — critique pour un projet d'analyse économique.
 
 ---
 

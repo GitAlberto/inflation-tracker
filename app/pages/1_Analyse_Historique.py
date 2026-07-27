@@ -20,7 +20,7 @@ ROOT = Path(__file__).parent.parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.data_client import get_categories, get_inflation, get_sources
+from app.data_client import get_categories, get_date_range, get_inflation, get_sources
 from app.theme import inject_theme
 
 st.set_page_config(page_title="Analyse Historique", page_icon="📊", layout="wide")
@@ -39,9 +39,10 @@ with st.sidebar:
     # Périmètre fixé à la France — toutes les sources sont filtrées geo=FR à la collecte
     pays = "FR"
 
-    # Sélection de la source
-    sources = get_sources() or ["INSEE", "ECB", "EUROSTAT", "DATAGOUV"]
-    source = st.selectbox("Source de données", sources, index=0)
+    # Sélection de la source — INSEE en premier (référence officielle française IPC)
+    sources_api = get_sources() or ["INSEE", "ECB", "EUROSTAT", "DATAGOUV"]
+    sources_sorted = sorted(sources_api, key=lambda s: (s != "INSEE", s))
+    source = st.selectbox("Source de données", sources_sorted, index=0)
 
     # Sélection des catégories (multi-sélection)
     cats = get_categories(source=source) or []
@@ -56,13 +57,16 @@ with st.sidebar:
         categories = []
         st.warning("Aucune catégorie disponible pour cette source.")
 
-    # Plage d'années — slider range double poignée
+    # Plage d'années — bornes dynamiques selon les données réelles de la source
     st.subheader("Période")
+    dr = get_date_range(source)
+    y_min = dr["annee_min"] if dr else 1996
+    y_max = dr["annee_max"] if dr else 2025
     annee_debut, annee_fin = st.slider(
         "Années",
-        min_value=1996,
-        max_value=2025,
-        value=(1996, 2025),
+        min_value=y_min,
+        max_value=y_max,
+        value=(y_min, y_max),
     )
     date_debut = f"{annee_debut}-01-01"
     date_fin   = f"{annee_fin}-12-31"
@@ -100,24 +104,22 @@ if not categories:
 else:
     fig = go.Figure()
 
-    # Palette de couleurs pour distinguer les catégories
-    colors = ["#1a3c5e", "#27ae60", "#e74c3c", "#f39c12", "#8e44ad"]
+    # Palette de couleurs distinctes — une couleur par catégorie
+    cat_colors = ["#1a3c5e", "#27ae60", "#e74c3c", "#f39c12", "#8e44ad"]
 
     all_data = []
+
     for i, cat in enumerate(categories):
         df = _load_serie(pays, source, cat, date_debut, date_fin)
         if df.empty:
             st.warning(f"Aucune donnée pour : {cat}")
             continue
-
         all_data.append(df)
-        color = colors[i % len(colors)]
-
-        # Courbe principale de la catégorie
+        color = cat_colors[i % len(cat_colors)]
         fig.add_trace(go.Scatter(
             x=df["date_obs"],
             y=df["valeur"],
-            name=cat[:45],                  # nom tronqué pour la légende
+            name=cat[:45],
             mode="lines",
             line=dict(color=color, width=2),
             hovertemplate=(
@@ -160,7 +162,7 @@ else:
         st.subheader("Statistiques descriptives")
 
         stats_rows = []
-        for i, (cat, df) in enumerate(zip(categories, all_data)):
+        for cat, df in zip(categories, all_data):
             if df.empty:
                 continue
             stats_rows.append({

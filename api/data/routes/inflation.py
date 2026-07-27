@@ -6,16 +6,16 @@ Issue GitHub : #11
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Security
+from fastapi import APIRouter, Depends, HTTPException, Query, Security
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from api.data.auth import verify_key
+from api.data.auth import verify_user_key
 from api.data.database import get_db
 from api.data.schemas import InflationResponse, InflationPoint
 
 # dependencies=[Security(verify_key)] protège toutes les routes de ce router (C5)
-router = APIRouter(prefix="/inflation", tags=["inflation"], dependencies=[Security(verify_key)])
+router = APIRouter(prefix="/inflation", tags=["inflation"], dependencies=[Security(verify_user_key)])
 
 
 @router.get("", response_model=InflationResponse)
@@ -144,6 +144,36 @@ def get_sources(db: Session = Depends(get_db)):
         text("SELECT DISTINCT source FROM inflation_unified ORDER BY source")
     ).fetchall()
     return {"sources": [r.source for r in rows]}
+
+
+@router.get("/date-range")
+def get_date_range(
+    source: str = Query(..., description="Source : ECB | INSEE | DATAGOUV | EUROSTAT"),
+    db: Session = Depends(get_db),
+):
+    """Retourne la première et dernière date disponible pour une source (pays=FR)."""
+    row = db.execute(
+        text("""
+            SELECT MIN(date_obs) AS date_min, MAX(date_obs) AS date_max
+            FROM inflation_unified
+            WHERE source = :source AND pays = 'FR'
+        """),
+        {"source": source.upper()},
+    ).fetchone()
+
+    if not row or not row.date_min:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Aucune donnée pour source={source.upper()} / pays=FR",
+        )
+
+    return {
+        "source":    source.upper(),
+        "date_min":  str(row.date_min),
+        "date_max":  str(row.date_max),
+        "annee_min": row.date_min.year,
+        "annee_max": row.date_max.year,
+    }
 
 
 @router.get("/categories")

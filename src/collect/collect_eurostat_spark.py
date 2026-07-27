@@ -10,7 +10,7 @@ traitement distribué.
 Architecture ETL :
     1. EXTRACT  → download_bulk()
                   Téléchargement HTTP du fichier TSV.GZ (bulk Eurostat)
-                  → data/raw/bigdata_eurostat/prc_hicp_manr_raw.tsv.gz
+                  → data/raw/bigdata_eurostat/prc_hicp_midx_raw.tsv.gz
     2. TRANSFORM → transform_with_spark()
                   Lecture + traitement PySpark du TSV brut
                   → data/processed/bigdata_eurostat/eurostat_clean.csv
@@ -18,15 +18,15 @@ Architecture ETL :
                   Chargement pandas → PostgreSQL (table eurostat_bulk)
 
 Pourquoi PySpark ?
-    Le fichier prc_hicp_manr contient ~200 000+ lignes après dépivotage.
+    Le fichier prc_hicp_midx contient ~270 000+ lignes après dépivotage.
     PySpark démontre la maîtrise du traitement de données volumineuses (C1)
     en mode distribué local, même sur une seule machine.
 
 =============================================================================
-Format du fichier source (prc_hicp_manr.tsv de Eurostat Bulk Download) :
+Format du fichier source (prc_hicp_midx.tsv de Eurostat Bulk Download) :
 =============================================================================
     URL      : https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/
-               data/prc_hicp_manr/?format=TSV&compressed=true
+               data/prc_hicp_midx/?format=TSV&compressed=true
     Format   : TSV compressé GZIP (.tsv.gz)
     Encodage : UTF-8
     Séparateur : tabulation (\t) entre la clé composite et les valeurs
@@ -40,14 +40,14 @@ Format du fichier source (prc_hicp_manr.tsv de Eurostat Bulk Download) :
           en ordre DÉCROISSANT (la plus récente en premier)
 
     Lignes de données (exemple) :
-        "M,RCH_A,CP00,AT"  | "2.1 p"  | "2.8"  | "3.1 p" | ...
-        "M,RCH_A,CP00,BE"  | "1.9"    | "2.4"  | "2.7"   | ...
-        "M,RCH_A,CP01,FR"  | "3.2"    | "3.5"  | "4.1"   | ...
+        "M,I15,CP00,AT"  | "119.8 p"  | "118.5"  | "117.3 p" | ...
+        "M,I15,CP00,BE"  | "121.2"    | "120.1"  | "119.4"   | ...
+        "M,I15,CP01,FR"  | "124.7"    | "123.8"  | "125.2"   | ...
 
     Décomposition de la clé composite :
         freq   : fréquence → toujours "M" (mensuel) dans ce dataset
-        unit   : unité → "RCH_A" = taux de variation annuel en %
-                          "INX_A_AVG" = indice base 2015=100
+        unit   : unité → "I15" = indice mensuel HICP base 2015=100
+                          (prc_hicp_midx ne contient que des indices, pas des taux)
         coicop : catégorie COICOP → "CP00" (all-items), "CP01" (alimentation),
                  "CP02" (alcool/tabac) ... "CP12" (biens divers)
                  + sous-catégories : "CP0111", "CP0112", ...
@@ -57,21 +57,21 @@ Format du fichier source (prc_hicp_manr.tsv de Eurostat Bulk Download) :
                  "SI", "SK" + zones agrégées : "EA", "EU27_2020"
 
     Valeurs :
-        - Numérique (ex: "2.1") — valeur de l'indice ou du taux
+        - Numérique (ex: "119.8") — valeur de l'indice base 2015=100
         - Avec flag de qualité (ex: "2.1 p") — "p"=provisoire, "e"=estimé
         - ":" — valeur manquante (à convertir en NULL)
         - Vide ("") — valeur non disponible
 
     Volume après dépivotage (wide → long) :
         ~800 combinaisons freq×unit×coicop×geo × ~340 périodes ≈ ~270 000 lignes
-        En filtrant unit=RCH_A (taux annuel) : ~150 000 lignes utiles
+        En filtrant unit=I15 + geo=FR : ~13 COICOP × ~350 périodes ≈ ~4 500 lignes utiles
 
 Table cible : eurostat_bulk (voir src/database/schema.sql)
     time_period ← colonne date dépivotée (YYYY-MM)
     obs_value   ← valeur numérique (flag supprimé)
     geo         ← code pays (ex: "FR", "DE")
     coicop      ← catégorie COICOP (ex: "CP01")
-    unit        ← unité de mesure (ex: "RCH_A")
+    unit        ← unité de mesure (ex: "I15")
 
 RGPD : aucune donnée personnelle — statistiques officielles Eurostat.
 Licence : Creative Commons Attribution 4.0 (CC BY 4.0).
@@ -175,7 +175,7 @@ DB_URL = SAUrl.create(
 def download_bulk() -> Path:
     """
     Télécharge le fichier bulk TSV.GZ depuis l'API Eurostat et le sauvegarde
-    dans data/raw/bigdata_eurostat/prc_hicp_manr_raw.tsv.gz.
+    dans data/raw/bigdata_eurostat/prc_hicp_midx_raw.tsv.gz.
 
     Le fichier est sauvegardé tel quel (compressé) pour conserver la donnée
     brute originale. La décompression se fait dans transform_with_spark().
@@ -218,7 +218,7 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
         3. Séparation de la colonne clé composite (freq,unit,coicop,geo)
         4. Dépivotage (wide → long) : une colonne par période → une ligne par observation
         5. Nettoyage des valeurs (suppression des flags "p", "e", etc.)
-        6. Filtrage sur unit=RCH_A (taux annuel de variation)
+        6. Filtrage sur unit=I15 (indice mensuel base 2015=100)
         7. Conversion en pandas pour le chargement PostgreSQL
 
     Pourquoi PySpark pour ce traitement ?
@@ -285,7 +285,7 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     log.info(f"Première colonne renommée : '{premiere_col}' → 'cle_composite'")
 
     # --- Séparation de la clé composite ---
-    # Format : "M,RCH_A,CP00,AT" → freq="M", unit="RCH_A", coicop="CP00", geo="AT"
+    # Format : "M,I15,CP00,AT" → freq="M", unit="I15", coicop="CP00", geo="AT"
     df_spark = (df_spark
                 .withColumn("freq",   F.split(F.col("cle_composite"), ",")[0])
                 .withColumn("unit",   F.split(F.col("cle_composite"), ",")[1])
@@ -339,7 +339,7 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     #   geo          → pays      (code pays ISO, ex: "FR")
     #   time_period  → date_obs  (DATE 1er du mois, ex: "2024-01" → 2024-01-01)
     #   obs_value    → valeur    (NUMERIC)
-    #   unit         → unite     (ex: "RCH_A")
+    #   unit         → unite     (ex: "I15")
     # La conversion date se fait en pandas (plus robuste que Spark to_date
     # pour les valeurs nulles ou les formats inattendus dans le fichier Eurostat)
     log.info("Conversion Spark → pandas...")

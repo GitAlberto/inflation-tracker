@@ -22,7 +22,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Security
 
-from api.model.auth import verify_key
+from api.model.auth import verify_user_key, verify_admin_key
 
 # Import des fonctions de prédiction depuis le package model/
 # Fonctionne car model/__init__.py existe et le projet est lancé depuis la racine
@@ -41,8 +41,8 @@ from api.model.schemas import (
 # Chemin vers metrics.json — défini une seule fois pour tous les endpoints
 METRICS_PATH = Path(__file__).parent.parent.parent.parent / "model" / "metrics.json"
 
-# dependencies=[Security(verify_key)] protège toutes les routes de ce router (C9)
-router = APIRouter(tags=["predictions"], dependencies=[Security(verify_key)])
+# Auth par route : user pour prédictions publiques, admin pour métriques (C10)
+router = APIRouter(tags=["predictions"])
 
 
 # =============================================================================
@@ -93,6 +93,7 @@ def _df_to_predictions(df, horizon: int, categorie: str) -> PredictionResponse:
     "/predict/{categorie}",
     response_model=PredictionResponse,
     summary="Prédictions Prophet pour une catégorie IPC",
+    dependencies=[Security(verify_user_key)],
 )
 def predict_categorie(
     categorie: str,
@@ -132,6 +133,7 @@ def predict_categorie(
     "/predict",
     response_model=dict[str, PredictionResponse],
     summary="Prédictions Prophet pour toutes les catégories IPC",
+    dependencies=[Security(verify_admin_key)],
 )
 def predict_toutes(
     horizon: Annotated[
@@ -167,6 +169,7 @@ def predict_toutes(
     "/categories",
     response_model=list[str],
     summary="Liste des catégories IPC disponibles",
+    dependencies=[Security(verify_user_key)],
 )
 def get_categories():
     """Retourne la liste des catégories pour lesquelles un modèle Prophet est disponible."""
@@ -189,6 +192,7 @@ def get_categories():
     "/metrics",
     response_model=MetricsResponse,
     summary="Métriques d'évaluation Prophet — toutes catégories",
+    dependencies=[Security(verify_admin_key)],
 )
 def get_metrics():
     """
@@ -209,6 +213,7 @@ def get_metrics():
     "/metrics/{categorie}",
     response_model=CategoryMetrics,
     summary="Métriques d'évaluation Prophet — une catégorie",
+    dependencies=[Security(verify_admin_key)],
 )
 def get_metrics_categorie(categorie: str):
     """
