@@ -9,15 +9,15 @@ from fastapi import APIRouter, Depends, Query, Security
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from api.data.auth import verify_key
+from api.data.auth import verify_user_key, verify_admin_key
 from api.data.database import get_db
 from api.data.schemas import PrixResponse, PrixAlimentaire
 
-# dependencies=[Security(verify_key)] protège toutes les routes de ce router (C5)
-router = APIRouter(prefix="/prix-alimentaires", tags=["prix-alimentaires"], dependencies=[Security(verify_key)])
+# Auth par route : user pour lecture, admin pour stats agrégées (C10)
+router = APIRouter(prefix="/prix-alimentaires", tags=["prix-alimentaires"])
 
 
-@router.get("", response_model=PrixResponse)
+@router.get("", response_model=PrixResponse, dependencies=[Security(verify_user_key)])
 def get_prix(
     categorie: Optional[str] = Query(None, description="Catégorie alimentaire (recherche partielle)"),
     limit: int = Query(100, ge=1, le=1000),
@@ -63,7 +63,7 @@ def get_prix(
     )
 
 
-@router.get("/categories")
+@router.get("/categories", dependencies=[Security(verify_user_key)])
 def get_categories(db: Session = Depends(get_db)):
     """Liste des catégories alimentaires disponibles."""
     rows = db.execute(
@@ -72,7 +72,7 @@ def get_categories(db: Session = Depends(get_db)):
     return {"categories": [r.categorie for r in rows]}
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Security(verify_admin_key)])
 def get_stats(
     categorie: Optional[str] = Query(None, description="Filtrer par catégorie"),
     db: Session = Depends(get_db),

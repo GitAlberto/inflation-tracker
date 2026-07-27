@@ -117,6 +117,27 @@ def get_sources() -> list[str] | None:
         return None
 
 
+def get_date_range(source: str) -> dict | None:
+    """
+    Retourne les années min/max réelles des données en base pour une source.
+
+    Returns:
+        dict {"source", "date_min", "date_max", "annee_min", "annee_max"}
+        ou None si l'API est indisponible ou la source inconnue.
+    """
+    try:
+        r = requests.get(
+            f"{DATA_API_URL}/api/inflation/date-range",
+            params={"source": source},
+            headers=_HEADERS,
+            timeout=_TIMEOUT,
+        )
+        r.raise_for_status()
+        return r.json()
+    except requests.RequestException:
+        return None
+
+
 def get_categories(source: str | None = None) -> list[str] | None:
     """Retourne la liste des catégories, filtrable par source."""
     params = {}

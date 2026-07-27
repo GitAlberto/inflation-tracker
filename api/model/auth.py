@@ -1,19 +1,19 @@
 """
 =============================================================================
-C9 — Authentification API modèle — X-API-Key
+C10 — Authentification API modèle — X-API-Key (deux niveaux)
 =============================================================================
-Vérifie la clé API passée dans le header HTTP X-API-Key sur chaque requête.
-La clé est stockée dans .env (variable API_KEY) — jamais en dur dans le code.
+Deux niveaux d'accès contrôlés par le header HTTP X-API-Key :
 
-Usage dans les routes :
-    from api.model.auth import verify_key
-    from fastapi import Security
+  verify_user_key  → accepte API_KEY (admin) OU API_KEY_USER
+                     Routes publiques : /predict/{categorie}, /categories
+  verify_admin_key → accepte uniquement API_KEY (admin)
+                     Routes sensibles : /metrics, /predict (toutes catégories)
 
-    @router.get("/endpoint")
-    def my_endpoint(key: str = Security(verify_key)):
-        ...
+Variables .env :
+    API_KEY       = clé administrateur (accès complet)
+    API_KEY_USER  = clé utilisateur (accès lecture publique)
 
-Issue GitHub : #15 (C9)
+Issue GitHub : #15 (C9) #22 (C10)
 =============================================================================
 """
 
@@ -31,16 +31,29 @@ load_dotenv(dotenv_path=Path(__file__).parent.parent.parent / ".env", override=T
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
-def verify_key(key: str | None = Security(_api_key_header)) -> str:
-    """
-    Dépendance FastAPI — vérifie que le header X-API-Key correspond à API_KEY dans .env.
-    Lève HTTP 403 si la clé est absente ou incorrecte.
-    """
-    expected = os.getenv("API_KEY")
-    # Clé absente ou ne correspond pas → accès refusé
-    if not expected or not key or key != expected:
+def verify_admin_key(key: str | None = Security(_api_key_header)) -> str:
+    """Admin uniquement — API_KEY requis. Routes sensibles (métriques, export)."""
+    expected_admin = os.getenv("API_KEY")
+    if not expected_admin or not key or key != expected_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès administrateur requis. Clé admin dans X-API-Key.",
+        )
+    return key
+
+
+def verify_user_key(key: str | None = Security(_api_key_header)) -> str:
+    """User ou admin — API_KEY ou API_KEY_USER acceptés. Routes publiques."""
+    expected_admin = os.getenv("API_KEY")
+    expected_user  = os.getenv("API_KEY_USER")
+    valid = {k for k in [expected_admin, expected_user] if k}
+    if not key or key not in valid:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Clé API manquante ou invalide. Fournir le header X-API-Key.",
         )
-    return key  # retourné pour injection optionnelle dans le handler
+    return key
+
+
+# Alias rétrocompatibilité — les tests existants utilisent verify_key (= admin)
+verify_key = verify_admin_key
