@@ -16,6 +16,9 @@ Utilisation :
     # Pipeline complet (nettoyage + collecte + agrégation)
     python src/database/import_data.py
 
+    # Recréer les tables depuis schema.sql AVANT la collecte (migration ou reset complet)
+    python src/database/import_data.py --reset-schema
+
     # Sans nettoyage préalable des fichiers (garde les anciens raw/processed)
     python src/database/import_data.py --no-clean
 
@@ -38,6 +41,7 @@ Issue GitHub : #9 (C4)
 =============================================================================
 """
 
+import os
 import sys
 import time
 import logging
@@ -45,9 +49,17 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
+import psycopg2
+from dotenv import load_dotenv
+
 # Ajout de la racine du projet au PYTHONPATH pour les imports relatifs
 ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
+
+load_dotenv(dotenv_path=ROOT / ".env", override=True)
+
+for _pg_var in ["PGPASSWORD", "PGUSER", "PGHOST", "PGPORT", "PGDATABASE", "PGPASSFILE"]:
+    os.environ.pop(_pg_var, None)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -95,6 +107,44 @@ SOURCES = [
         "status": "ready",
     },
 ]
+
+
+def reset_schema() -> None:
+    """
+    Recrée toutes les tables depuis src/database/schema.sql.
+
+    Exécute le fichier SQL en une seule passe via psycopg2 (autocommit=True).
+    schema.sql commence par DROP TABLE IF EXISTS … CASCADE, donc toutes les
+    tables existantes sont supprimées avant d'être recréées — données perdues.
+    À utiliser lors d'une migration de schéma ou d'un reset complet.
+    """
+    schema_path = ROOT / "src" / "database" / "schema.sql"
+    if not schema_path.exists():
+        raise FileNotFoundError(f"schema.sql introuvable : {schema_path}")
+
+    schema_sql = schema_path.read_text(encoding="utf-8")
+
+    log.info("=" * 60)
+    log.info("ÉTAPE 0 — RESET SCHEMA : DROP + CREATE depuis schema.sql")
+    log.info(f"Fichier : {schema_path}")
+
+    # psycopg2 avec autocommit=True supporte plusieurs instructions SQL en une passe
+    conn = psycopg2.connect(
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=int(os.getenv("POSTGRES_PORT", "5432")),
+        user=os.getenv("POSTGRES_USER"),
+        password=os.getenv("POSTGRES_PASSWORD"),
+        dbname=os.getenv("POSTGRES_DB", "inflation_tracker"),
+    )
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute(schema_sql)
+        log.info("Schema recréé avec succès — toutes les tables sont vides")
+    finally:
+        conn.close()
+
+    log.info("=" * 60)
 
 
 def clean_output_files() -> None:
@@ -233,14 +283,16 @@ def main(
     sources_selectionnees: list[str] | None = None,
     do_clean: bool = True,
     do_aggregate: bool = True,
+    do_reset_schema: bool = False,
 ) -> None:
     """
-    Orchestre le pipeline complet : nettoyage → collecte → agrégation.
+    Orchestre le pipeline complet : (reset schema) → nettoyage → collecte → agrégation.
 
     Args:
         sources_selectionnees : clés des sources à lancer (None = toutes).
         do_clean              : supprime data/raw/ et data/processed/ avant collecte.
         do_aggregate          : lance aggregate_clean.py après la collecte.
+        do_reset_schema       : recrée les tables depuis schema.sql avant la collecte.
     """
     debut_global = time.time()
 
@@ -257,10 +309,16 @@ def main(
 
     log.info("=" * 60)
     log.info("DEBUT PIPELINE — inflation-tracker (C4, issue #9)")
-    log.info(f"Sources   : {[s['key'] for s in sources_a_lancer]}")
-    log.info(f"Nettoyage : {'OUI' if do_clean else 'NON (--no-clean)'}")
-    log.info(f"Agrégation: {'OUI' if do_aggregate else 'NON (--no-aggregate)'}")
+    log.info(f"Sources      : {[s['key'] for s in sources_a_lancer]}")
+    log.info(f"Reset schema : {'OUI (--reset-schema)' if do_reset_schema else 'NON'}")
+    log.info(f"Nettoyage    : {'OUI' if do_clean else 'NON (--no-clean)'}")
+    log.info(f"Agrégation   : {'OUI' if do_aggregate else 'NON (--no-aggregate)'}")
     log.info("=" * 60)
+
+    # --- Étape -1 : recréation du schéma depuis schema.sql ---
+    if do_reset_schema:
+        reset_schema()
+        log.info("")
 
     # --- Étape 0 : nettoyage des anciens fichiers output ---
     if do_clean:
@@ -297,6 +355,11 @@ if __name__ == "__main__":
         metavar="SOURCE",
     )
     parser.add_argument(
+        "--reset-schema",
+        action="store_true",
+        help="Recrée toutes les tables depuis schema.sql avant la collecte (DROP + CREATE).",
+    )
+    parser.add_argument(
         "--no-clean",
         action="store_true",
         help="Ne pas supprimer data/raw/ et data/processed/ avant la collecte.",
@@ -312,4 +375,5 @@ if __name__ == "__main__":
         sources_selectionnees=args.source,
         do_clean=not args.no_clean,
         do_aggregate=not args.no_aggregate,
+        do_reset_schema=args.reset_schema,
     )

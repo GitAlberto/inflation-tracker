@@ -25,7 +25,7 @@ from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 
 # L'API modèle n'a pas de base de données → charger .env explicitement ici
-load_dotenv(dotenv_path=Path(__file__).parent.parent.parent / ".env", override=True)
+load_dotenv(dotenv_path=Path(__file__).parent.parent.parent / ".env")  # override=False : les vars Docker ont priorité sur .env
 
 # Header HTTP attendu : X-API-Key: <valeur>
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)

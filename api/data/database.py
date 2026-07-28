@@ -6,7 +6,7 @@ from sqlalchemy.engine import URL as SAUrl
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).parent.parent.parent
-load_dotenv(dotenv_path=ROOT / ".env", override=True)
+load_dotenv(dotenv_path=ROOT / ".env")  # override=False : les vars Docker ont priorité sur .env
 
 for _var in ["PGPASSWORD", "PGUSER", "PGHOST", "PGPORT", "PGDATABASE", "PGPASSFILE"]:
     os.environ.pop(_var, None)
