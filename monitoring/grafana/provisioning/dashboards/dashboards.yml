@@ -9,8 +9,8 @@ providers:
     orgId: 1
     folder: 'Inflation Tracker'
     type: file
-    disableDeletion: false       # empêche la suppression via UI
+    disableDeletion: true        # empêche la suppression des dashboards provisionnés via UI
     updateIntervalSeconds: 30    # polling pour détecter les changements de JSON
-    allowUiUpdates: true         # permet les modifications depuis Grafana UI
+    allowUiUpdates: false        # interdit les modifications UI — la source de vérité c'est le JSON
     options:
       path: /var/lib/grafana/dashboards
