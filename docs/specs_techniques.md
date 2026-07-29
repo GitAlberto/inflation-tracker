@@ -127,6 +127,61 @@ introduit du data leakage et surestime les performances.
 
 ---
 
+## Décision technique #5 — Exclusion catégorie 12 du modèle Prophet (C8)
+
+**Catégorie concernée :** `12 - Biens et services divers` (soins personnels,
+protection sociale, assurances, services financiers divers).
+
+**Cause technique :** `model/train.py` charge dynamiquement toutes les catégories
+présentes dans `inflation_unified` pour `source='INSEE'`. La série INSEE BDM
+correspondant à la catégorie 12 n'a pas été intégrée dans `collect_insee_api.py`
+— la donnée est absente de la base. Aucun `.pkl` ni entrée dans `metrics.json`
+ne peuvent donc être générés pour cette catégorie.
+
+**Justification métier :** la catégorie 12 regroupe des prix structurellement
+hétérogènes (coiffure, frais bancaires, assurances) dont les mécanismes de
+formation diffèrent fondamentalement des autres catégories. La saisonnalité
+annuelle capturée par Prophet (cycles alimentaires, énergétiques) n'est pas
+pertinente sur cette série — son exclusion est une décision de qualité modèle,
+pas seulement une contrainte de données.
+
+**Périmètre du modèle :** 12 catégories entraînées (COICOP 00–11), toutes avec
+`n_train=60` et `n_eval=12`. MAE moyenne : 1.43 pts IPC.
+
+---
+
+## Décision technique #6 — Réentraînement manuel (C13)
+
+Le réentraînement des modèles Prophet n'est pas automatisé en CI/CD.
+
+**Raison :** l'entraînement nécessite CmdStan (compilateur C++ ~500 Mo) et
+~15 minutes de calcul pour les 12 catégories. Ce coût est incompatible avec
+un pipeline CI déclenché à chaque push. En CI, les tests nécessitant les `.pkl`
+sont automatiquement skippés via le marqueur `@pytest.mark.skipif(CI=true)`.
+
+**Procédure de réentraînement :**
+```bash
+python model/train.py          # génère les 12 .pkl + metrics.json
+git add model/metrics.json     # versionné — trace les performances
+# les .pkl sont dans .gitignore (binaires lourds, régénérables)
+```
+
+**Déclencheur :** à chaque mise à jour des données INSEE dans `inflation_unified`
+(mensuelle) ou à chaque changement d'hyperparamètres Prophet.
+
+---
+
+## Limites connues
+
+| Limite | Impact | Décision |
+|---|---|---|
+| JAVA_HOME hardcodé dans `collect_eurostat_spark.py` | PySpark échoue si Java n'est pas dans le PATH de la session courante | Documenté — fermer/rouvrir le terminal après installation Java suffit |
+| OpenFoodFacts collecté mais non intégré en UI | Les prix alimentaires réels ne sont pas visualisés dans Streamlit | Volume insuffisant et couverture géographique partielle — backlog v2 |
+| DATAGOUV rebasé 2025 | Valeurs absolues incomparables avec INSEE/ECB/Eurostat (base 2015) | Tendances relatives valides — note affichée dans specs_fonctionnelles |
+| Catégorie 12 exclue du modèle | 12 catégories au lieu de 13 | Voir Décision technique #5 |
+
+---
+
 ## Stack technique
 
 | Composant | Technologie | Justification |
