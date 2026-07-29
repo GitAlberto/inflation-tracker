@@ -55,13 +55,13 @@ Fournir une application web permettant à un utilisateur non expert de :
 > afin de comparer les tendances historiques.
 
 Critères d'acceptation :
-- [ ] L'utilisateur peut sélectionner une source parmi : INSEE, ECB, EUROSTAT, DATAGOUV
-- [ ] L'utilisateur peut sélectionner un pays (liste dépend de la source)
-- [ ] L'utilisateur peut sélectionner 1 à 5 catégories IPC simultanément
-- [ ] L'utilisateur peut définir la période via un slider 1996–2025
-- [ ] Le graphique affiche une courbe par catégorie avec couleurs distinctes
-- [ ] Un tableau de statistiques descriptives (min, max, moyenne, variation) s'affiche sous le graphique
-- [ ] Si aucune donnée n'est disponible pour la combinaison choisie, un message explicite s'affiche
+- [x] L'utilisateur peut sélectionner une source parmi : INSEE, ECB, EUROSTAT, DATAGOUV
+- [ ] L'utilisateur peut sélectionner un pays (liste dépend de la source) *(périmètre fixé à FR — toutes les sources sont filtrées geo=FR à la collecte)*
+- [x] L'utilisateur peut sélectionner 1 à 5 catégories IPC simultanément
+- [x] L'utilisateur peut définir la période via un slider 1996–2025
+- [x] Le graphique affiche une courbe par catégorie avec couleurs distinctes
+- [x] Un tableau de statistiques descriptives (min, max, moyenne, variation) s'affiche sous le graphique
+- [x] Si aucune donnée n'est disponible pour la combinaison choisie, un message explicite s'affiche
 
 ---
 
@@ -72,10 +72,10 @@ Critères d'acceptation :
 > à l'inflation post-COVID.
 
 Critères d'acceptation :
-- [ ] La sélection multiple (max 5) est permise via un widget multiselect
-- [ ] Chaque courbe a une couleur distincte et une entrée dans la légende
-- [ ] Le tooltip au survol affiche toutes les valeurs pour la date pointée
-- [ ] Les statistiques du tableau sont calculées individuellement par catégorie
+- [x] La sélection multiple (max 5) est permise via un widget multiselect
+- [x] Chaque courbe a une couleur distincte et une entrée dans la légende
+- [x] Le tooltip au survol affiche toutes les valeurs pour la date pointée
+- [x] Les statistiques du tableau sont calculées individuellement par catégorie
 
 ---
 
@@ -90,11 +90,11 @@ Critères d'acceptation :
 > afin d'identifier des cycles ou des ruptures structurelles.
 
 Critères d'acceptation :
-- [ ] L'utilisateur sélectionne une catégorie et une source
-- [ ] Le graphique principal montre l'IPC absolu + la variation YoY sur un second axe
-- [ ] Une heatmap mensuelle (années × mois) affiche l'intensité de la variation
-- [ ] Les statistiques clés (min, max, pic, mois le plus inflationniste) sont affichées
-- [ ] L'utilisateur peut filtrer par plage d'années via un slider
+- [x] L'utilisateur sélectionne une catégorie et une source
+- [x] Le graphique principal montre l'IPC absolu + la variation YoY sur un second axe
+- [x] Une heatmap mensuelle (années × mois) affiche l'intensité de la variation
+- [x] Les statistiques clés (min, max, pic, mois le plus inflationniste) sont affichées
+- [x] L'utilisateur peut filtrer par plage d'années via un slider
 
 ---
 
@@ -105,10 +105,10 @@ Critères d'acceptation :
 > maximale tout en identifiant les divergences entre sources.
 
 Critères d'acceptation :
-- [ ] Un sélecteur de source est disponible, avec DATAGOUV sélectionné par défaut
-- [ ] Le changement de source recharge les données sans recharger la page
-- [ ] Si la source sélectionnée ne contient pas la catégorie choisie, un message l'indique
-- [ ] La note « base 2025 » est visible quand DATAGOUV est sélectionné
+- [ ] Un sélecteur de source est disponible, avec DATAGOUV sélectionné par défaut *(sélecteur présent mais INSEE est le défaut — source officielle de référence)*
+- [x] Le changement de source recharge les données sans recharger la page
+- [x] Si la source sélectionnée ne contient pas la catégorie choisie, un message l'indique
+- [ ] La note « base 2025 » est visible quand DATAGOUV est sélectionné *(non implémenté dans l'UI — documenté dans specs_techniques.md et base_ref en base)*
 
 ---
 
@@ -123,14 +123,14 @@ Critères d'acceptation :
 > afin d'estimer la hausse attendue de mon budget courses.
 
 Critères d'acceptation :
-- [ ] L'utilisateur sélectionne une catégorie parmi les 13 disponibles
-- [ ] L'utilisateur ajuste l'horizon de prédiction via un slider (1–36 mois)
-- [ ] Le graphique superpose l'historique réel (INSEE) et la prédiction Prophet
-- [ ] L'intervalle de confiance 80% est représenté en zone semi-transparente
-- [ ] Une ligne verticale pointillée sépare visuellement historique et prédiction
-- [ ] Les métriques MAE/RMSE/MAPE de la catégorie sont affichées dans la sidebar
-- [ ] La variation totale prédite (premier → dernier mois) est affichée en métrique
-- [ ] Un tableau détaillé des valeurs prédites est disponible dans un expander
+- [x] L'utilisateur sélectionne une catégorie parmi les 13 disponibles
+- [x] L'utilisateur ajuste l'horizon de prédiction via un slider (1–36 mois)
+- [x] Le graphique superpose l'historique réel (INSEE) et la prédiction Prophet
+- [x] L'intervalle de confiance 80% est représenté en zone semi-transparente
+- [x] Une ligne verticale pointillée sépare visuellement historique et prédiction
+- [x] Les métriques MAE/RMSE/MAPE de la catégorie sont affichées dans la sidebar
+- [x] La variation totale prédite (premier → dernier mois) est affichée en métrique
+- [x] Un tableau détaillé des valeurs prédites est disponible dans un expander
 
 ---
 
@@ -141,9 +141,9 @@ Critères d'acceptation :
 > afin de pondérer mes décisions en fonction de l'incertitude du modèle.
 
 Critères d'acceptation :
-- [ ] Les métriques MAE et MAPE sont affichées par catégorie sélectionnée
-- [ ] MAE < 1 pt IPC = modèle fiable, > 5 = à interpréter avec précaution
-- [ ] Le contexte d'évaluation (train 2020-2024, eval 2025) est clairement indiqué
+- [x] Les métriques MAE et MAPE sont affichées par catégorie sélectionnée
+- [x] MAE < 1 pt IPC = modèle fiable, > 5 = à interpréter avec précaution
+- [x] Le contexte d'évaluation (train 2020-2024, eval 2025) est clairement indiqué
 
 ---
 
@@ -158,11 +158,11 @@ Critères d'acceptation :
 > afin d'évaluer la pertinence de l'approche Prophet pour ce cas d'usage.
 
 Critères d'acceptation :
-- [ ] Un bar chart horizontal montre la MAE de chaque catégorie
-- [ ] Les barres sont colorées : vert ≤ 1 pt, orange ≤ 5 pts, rouge > 5 pts
-- [ ] Un scatter RMSE vs MAE permet d'identifier les outliers
-- [ ] Un tableau complet MAE/RMSE/MAPE avec formatage numérique est disponible
-- [ ] La méthodologie d'évaluation (split temporel strict, pas de shuffle) est documentée
+- [x] Un bar chart horizontal montre la MAE de chaque catégorie
+- [ ] Les barres sont colorées : vert ≤ 1 pt, orange ≤ 5 pts, rouge > 5 pts *(2 couleurs : vert ≤ 5 pts / rouge > 5 pts — seuil à 1 pt non matérialisé)*
+- [x] Un scatter RMSE vs MAE permet d'identifier les outliers
+- [x] Un tableau complet MAE/RMSE/MAPE avec formatage numérique est disponible
+- [x] La méthodologie d'évaluation (split temporel strict, pas de shuffle) est documentée
 
 ---
 
@@ -177,9 +177,9 @@ Critères d'acceptation :
 > afin de distinguer une erreur de mes saisies d'une panne de service.
 
 Critères d'acceptation :
-- [ ] La page d'accueil affiche le statut (✅/❌) des deux APIs (data 8001, modèle 8002)
-- [ ] Si une API est hors ligne, les pages qui en dépendent affichent un message explicite
-- [ ] Le message indique la commande pour relancer le service manquant
+- [x] La page d'accueil affiche le statut (✅/❌) des deux APIs (data 8001, modèle 8002)
+- [x] Si une API est hors ligne, les pages qui en dépendent affichent un message explicite
+- [x] Le message indique la commande pour relancer le service manquant
 
 ---
 
@@ -189,10 +189,10 @@ Critères d'acceptation :
 > afin que l'expérience ne soit pas frustrante lors de la démonstration.
 
 Critères d'acceptation :
-- [ ] Les données historiques (API data) se chargent en < 3s (cache Streamlit 5 min)
-- [ ] Les prédictions Prophet se chargent en < 15s (modèle .pkl + Prophet, cache 1 min)
-- [ ] Un spinner est affiché pendant le chargement des prédictions
-- [ ] Les appels API ont un timeout configuré pour éviter les blocages infinis
+- [x] Les données historiques (API data) se chargent en < 3s (cache Streamlit 5 min)
+- [x] Les prédictions Prophet se chargent en < 15s (modèle .pkl + Prophet, cache 1 min)
+- [x] Un spinner est affiché pendant le chargement des prédictions
+- [x] Les appels API ont un timeout configuré pour éviter les blocages infinis
 
 ---
 
@@ -235,7 +235,7 @@ Utilisateur ouvre l'application
 | Temps de chargement données | < 3s | Cache Streamlit 5 min, API locale |
 | Temps de prédiction Prophet | < 15s | Chargement .pkl + calcul Prophet |
 | Disponibilité en démo | 100% | Stack locale Docker, pas de dépendance réseau |
-| Couverture tests API | > 70% | Mesurée par pytest-cov en CI |
+| Couverture tests API | > 70% (atteint : 93%) | 47/47 tests pytest — mesurée par pytest-cov en CI |
 | Volume données supporté | 3,68M lignes | PostgreSQL + index sur (source, pays, categorie) |
 | Navigateurs supportés | Chrome, Firefox, Edge | Rendu Plotly + Streamlit standard |
 
