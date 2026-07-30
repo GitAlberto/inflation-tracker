@@ -1,12 +1,14 @@
 # Dossiers lourds inutiles dans le build Docker
 .venv/
 data/
-model/
 logs/
 scripts/
 docs/
 preuves/
 monitoring/
+
+# model/ intentionnellement INCLUS — api_model en a besoin (predict.py + .pkl)
+# *.pkl intentionnellement INCLUS — chargés au démarrage de l'API modèle
 
 # Cache et artefacts Python
 __pycache__/
@@ -29,8 +31,7 @@ htmlcov/
 .vscode/
 *.code-workspace
 
-# Fichiers lourds
-*.pkl
+# Fichiers lourds non nécessaires en prod
 *.csv
 *.xml
 *.tsv
