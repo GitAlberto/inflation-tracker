@@ -7,13 +7,18 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copie des dépendances en premier — couche Docker cachée si requirements.txt
-# n'a pas changé (évite de réinstaller à chaque rebuild du code source)
-COPY requirements.txt .
-
-# --no-cache-dir évite de stocker le cache pip dans l'image finale
-# prophet + cmdstanpy compilent CmdStan → peut prendre ~5 minutes à la première build
-RUN pip install --no-cache-dir -r requirements.txt
+# Dépendances API modèle uniquement — sans pyspark/jupyter/statsmodels (inutiles en prod)
+# prophet installe cmdstanpy comme dépendance — CmdStan binaire NOT requis pour l'inférence
+RUN pip install --no-cache-dir \
+    fastapi==0.115.5 \
+    uvicorn[standard]==0.32.1 \
+    pydantic==2.10.1 \
+    python-dotenv==1.0.1 \
+    prometheus-client==0.21.1 \
+    prophet==1.1.6 \
+    numpy==1.26.4 \
+    pandas==2.2.3 \
+    joblib==1.4.2
 
 # Copie du code source complet
 COPY . .

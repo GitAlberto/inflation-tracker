@@ -24,8 +24,8 @@ data/processed/**/*
 !data/processed/**/.gitkeep
 !data/processed/README.md
 
-# Modèle sérialisé (trop lourd pour Git)
-model/*.pkl
+# Modèles sérialisés — .pkl committés (12 × 17Ko = 204Ko, nécessaires pour le déploiement cloud)
+# model/*.pkl  ← volontairement décommenté pour Railway
 model/*.h5
 model/*.joblib
 
