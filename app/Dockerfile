@@ -6,6 +6,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+ENV PYTHONPATH=/app
+
 # Dépendances Streamlit uniquement — pas de prophet/pyspark/jupyter
 RUN pip install --no-cache-dir \
     streamlit==1.40.2 \
