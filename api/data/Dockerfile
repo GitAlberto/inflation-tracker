@@ -6,6 +6,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# /app ajouté au PYTHONPATH — imports absolus depuis la racine du projet
+ENV PYTHONPATH=/app
+
 COPY requirements.txt .
 
 # Sous-ensemble des dépendances : on exclut prophet/pyspark (lourds, inutiles ici)

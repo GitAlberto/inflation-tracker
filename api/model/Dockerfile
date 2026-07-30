@@ -7,6 +7,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# /app ajouté au PYTHONPATH — permet "from model.predict import ..." depuis api/model/
+ENV PYTHONPATH=/app
+
 # Dépendances API modèle uniquement — sans pyspark/jupyter/statsmodels (inutiles en prod)
 # prophet installe cmdstanpy comme dépendance — CmdStan binaire NOT requis pour l'inférence
 RUN pip install --no-cache-dir \
