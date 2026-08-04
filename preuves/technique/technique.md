@@ -121,10 +121,14 @@ Benchmark détaillé : `docs/benchmark_resultats.json`.
 
 | Fichier | Ce que ça montre |
 |---|---|
-| `C16_pull_request_diff.png` | GitHub "Comparing changes" AlbertoFinB3 → main : 1 commit, 6 files changed, diff API/data/routes/inflation.py (ajout filtre source sur /pays). |
-| `C16_pull_request_description.png` | Formulaire "Open a pull request" rempli : titre + description Markdown détaillant les changements (filtrage France sur 4 collecteurs, suppression selectbox pays, API /pays). |
+| `C16_jira_board_initial.png` | Board Jira "Inflation - Tracker B3" — 21 tickets C1–C21 créés, tous en "À faire". Détail ITB-81 (C21 — Correction et test de non-régression) visible à droite. |
+| `C16_jira_board_en_cours.png` | Progression du board — tickets C1 passent "Terminé", ITB-7 (Collecte Eurostat via PySpark) en "En cours". Suivi agile en temps réel. |
+| `C16_jira_board_avancement.png` | Avancement — C1 (5 sous-tâches), C2 (3 sous-tâches), C3, C5, C6, C7, C8 tous "Terminé". Hiérarchie Epic/Story/Task visible. |
+| `C16_jira_board_termine.png` | Board final — tous les tickets "Terminé" (barré). Détail C19 (ITB-73) ouvert : Tickets enfant à 100% (Docker Compose + Script démarrage). |
+| `C16_pull_request_diff.png` | GitHub "Comparing changes" AlbertoFinB3 → main : diff API/data/routes/inflation.py (ajout filtre source sur /pays). |
+| `C16_pull_request_description.png` | Formulaire PR GitHub : titre + description Markdown détaillant les changements. |
 
-Kanban et backlog : `docs/agile.md`, board GitHub Projects.
+Kanban et backlog : `docs/kanban.md`, board Jira.
 
 ---
 

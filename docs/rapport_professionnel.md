@@ -360,13 +360,12 @@ Scripts : `model/train.py`, `model/evaluate.py` — Métriques : `model/metrics.
 
 **Méthode :** Kanban (projet solo, périmètre évolutif, flux continu par compétence).
 
-**Outil :** GitHub Projects — board 4 colonnes (Backlog / In Progress / Review / Done).
+**Outil :** Jira — board colonnes (Backlog / In Progress / Review / Done).
 
 **Convention de commit :** `<type>(<compétences>): <description> #<issue>`  
 Exemple : `feat(C8): modèle Prophet IPC France 13 catégories INSEE #14`
 
-**Board :** https://github.com/users/GitAlberto/projects/2  
-*(Captures : `C16_pull_request_diff.png`, `C16_pull_request_description.png`, `C13_C16_pr59_ci_checks.png`)*
+*(Captures : `C16_jira_board_initial.png`, `C16_jira_board_en_cours.png`, `C16_jira_board_avancement.png`, `C16_jira_board_termine.png`, `C16_pull_request_diff.png`, `C16_pull_request_description.png`)*
 
 ---
 
