@@ -1,6 +1,6 @@
 # Kanban — Inflation Tracker · RNCP B3
 > Référence officielle : PDF Simplon / ECE K. Kadri 2026  
-> Board GitHub Projects : https://github.com/users/GitAlberto/projects/2
+> Board Jira : (URL à compléter)
 
 ---
 
@@ -87,7 +87,7 @@ En tant que data engineer, je filtre sur pays=FR à la collecte sur toutes les s
 ### C4 — Base de données RGPD · ✅ Done
 
 **Epic :** Bloc 1 — Données exploitables  
-**Feature :** PostgreSQL 16 avec schéma 6 tables + registre de traitement RGPD
+**Feature :** PostgreSQL 15 avec schéma 6 tables + registre de traitement RGPD
 
 **US1 — Schéma PostgreSQL complet**  
 En tant que data engineer, je crée le schéma avec 6 tables, clés primaires et index de performance, afin d'avoir une base structurée.  
@@ -209,7 +209,7 @@ En tant qu'utilisateur, je consulte les performances MAE/RMSE/MAPE dans Streamli
 
 **US3 — Gestion des erreurs API modèle**  
 En tant qu'utilisateur, je vois un message clair si l'API modèle est indisponible, afin de comprendre l'état du service sans message technique.  
-→ `app/model_client.py`
+→ `app/api_client.py`
 
 ---
 
@@ -295,11 +295,11 @@ En tant qu'architecte, je crée le schéma fonctionnel 4 couches (Sources → ET
 ### C16 — Coordination agile · ✅ Done
 
 **Epic :** Bloc 3 — Application IA complète  
-**Feature :** Pilotage Kanban GitHub Projects avec issues C1-C21, convention de commits et documentation méthode
+**Feature :** Pilotage Kanban Jira avec issues C1-C21, convention de commits et documentation méthode
 
-**US1 — Board Kanban GitHub Projects**  
+**US1 — Board Kanban Jira**  
 En tant que chef de projet, je maintiens un board avec issues liées aux compétences RNCP et statuts à jour, afin de tracer l'avancement de manière agile.  
-→ GitHub Projects (board en ligne)
+→ Jira (board en ligne)
 
 **US2 — Convention de commits feat(CX)**  
 En tant que chef de projet, j'applique la convention `feat(CX): description #issue` à chaque commit, afin d'assurer la traçabilité compétence ↔ code.  
