@@ -16,7 +16,7 @@ la mesurent (INSEE, BCE, Eurostat) sont dispersées, au format technique (SDMX, 
 multi-colonnes, API REST avec codes COICOP), et inaccessibles pour un utilisateur
 non statisticien.
 
-> Le kebab coûtait **3,50 €** en 2019. Il en coûte **7 €** en 2026.
+> Le kebab coûtait **5,00 €** en 2019. Il en coûte **7,50 €** en 2025.
 > L'utilisateur ressent l'inflation, mais ne peut pas la quantifier ni anticiper
 > son évolution par catégorie de produit.
 

@@ -163,7 +163,7 @@ col_a, col_b = st.columns(2)
 with col_a:
     st.subheader("🗂️ Le projet")
     st.markdown("""
-Le kebab coûtait **3,50 €** en 2019. Il en coûte **7 €** en 2026.
+Le kebab coûtait **5,00 €** en 2019. Il en coûte **7,50 €** en 2025.
 
 **Inflation Tracker** agrège 5 sources de données publiques pour rendre
 l'inflation lisible et prédire son évolution par catégorie de produit.
@@ -182,6 +182,73 @@ with col_b:
 | 🔮 **Prédictions** | Prophet 12 mois + intervalle de confiance |
 | 📈 **Métriques Modèle** | MAE par catégorie, performance Prophet |
     """)
+
+st.divider()
+
+# =============================================================================
+# Tableau d'impact — l'inflation en euros, pour tout le monde
+# =============================================================================
+
+st.subheader("💡 L'inflation en euros — ce que ça change vraiment")
+
+if kpis:
+    years     = sorted(kpis.keys())
+    ref_year  = min(y for y in years if y >= 2020)
+    cur_year  = max(years)
+    ipc_start = kpis.get(ref_year)
+    ipc_end   = kpis.get(cur_year)
+
+    if ipc_start and ipc_end:
+        delta_total = ipc_end - ipc_start
+        pct_total   = delta_total / ipc_start * 100
+        st.caption(
+            f"IPC Ensemble (INSEE) — {ref_year} : **{ipc_start:.1f} pts** → "
+            f"{cur_year} : **{ipc_end:.1f} pts** — soit **+{delta_total:.1f} pts IPC "
+            f"(+{pct_total:.1f} %)** sur la période."
+        )
+
+        import pandas as pd
+        budgets = [300, 500, 800, 1_200, 2_000]
+        rows = []
+        for b in budgets:
+            budget_now = round(b * (ipc_end / ipc_start))
+            hausse     = budget_now - b
+            rows.append({
+                f"Budget en {ref_year}": f"{b} €/mois",
+                f"Budget équivalent en {cur_year}": f"{budget_now} €/mois",
+                "Hausse mensuelle": f"+{hausse} €",
+                "Hausse annuelle": f"+{hausse * 12} €",
+            })
+        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        # Mini tableau explicatif — détail du calcul pas à pas sur l'exemple 500 €
+        st.markdown("**Comment ce calcul fonctionne — exemple avec 500 €/mois :**")
+        exemple_budget = 500
+        exemple_now    = round(exemple_budget * (ipc_end / ipc_start))
+        exemple_hausse = exemple_now - exemple_budget
+        etapes = [
+            {
+                "Étape": "① Hausse de l'IPC",
+                "Calcul": f"IPC {cur_year} − IPC {ref_year} = {ipc_end:.1f} − {ipc_start:.1f}",
+                "Résultat": f"+{delta_total:.1f} pts IPC",
+            },
+            {
+                "Étape": "② % d'augmentation",
+                "Calcul": f"({delta_total:.1f} / {ipc_start:.1f}) × 100",
+                "Résultat": f"+{pct_total:.1f} %",
+            },
+            {
+                "Étape": "③ Nouveau budget",
+                "Calcul": f"500 € × ({ipc_end:.1f} / {ipc_start:.1f})",
+                "Résultat": f"{exemple_now} €/mois",
+            },
+            {
+                "Étape": "④ Hausse en €",
+                "Calcul": f"{exemple_now} € − 500 €",
+                "Résultat": f"+{exemple_hausse} €/mois — soit +{exemple_hausse * 12} €/an",
+            },
+        ]
+        st.dataframe(pd.DataFrame(etapes), use_container_width=True, hide_index=True)
 
 st.divider()
 st.caption("Sources : INSEE BDM · BCE HICP · Eurostat bulk · OpenFoodFacts · data.gouv.fr")

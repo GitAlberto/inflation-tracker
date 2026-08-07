@@ -174,49 +174,50 @@ fig_mae.update_layout(
 st.plotly_chart(fig_mae, use_container_width=True)
 
 # =============================================================================
-# Graphique 2 — RMSE vs MAE — scatter pour repérer les outliers
+# Graphique 2 — MAE vs RMSE par catégorie (barres groupées)
 # =============================================================================
 
-st.subheader("RMSE vs MAE — détection des outliers")
-st.caption("Si RMSE >> MAE, il y a des erreurs ponctuelles importantes (pics d'inflation difficiles à modéliser)")
+st.subheader("MAE vs RMSE par catégorie")
+st.caption(
+    "Quand la barre RMSE (orange) dépasse nettement la MAE (violet), "
+    "le modèle fait des erreurs ponctuelles importantes — pics d'inflation difficiles à capturer."
+)
 
-fig_scatter = go.Figure()
-fig_scatter.add_trace(go.Scatter(
-    x=df_metrics["MAE"],
-    y=df_metrics["RMSE"],
-    mode="markers+text",
-    marker=dict(size=12, color="#1a3c5e", opacity=0.8),
-    text=df_metrics["Catégorie"].str[:20],        # label court
-    textposition="top center",
-    hovertemplate=(
-        "<b>%{text}</b><br>"
-        "MAE : %{x:.4f}<br>"
-        "RMSE : %{y:.4f}<br>"
-        "<extra></extra>"
-    ),
+df_sorted = df_metrics.sort_values("MAE", ascending=True)
+
+fig_compare = go.Figure()
+
+fig_compare.add_trace(go.Bar(
+    name="MAE",
+    y=df_sorted["Catégorie"],
+    x=df_sorted["MAE"],
+    orientation="h",
+    marker_color="#8d57f6",
+    hovertemplate="<b>%{y}</b><br>MAE : %{x:.4f} pts IPC<extra></extra>",
 ))
 
-# Diagonale RMSE = MAE (référence : 0 outlier)
-max_val = max(df_metrics["MAE"].max(), df_metrics["RMSE"].max()) * 1.1
-fig_scatter.add_trace(go.Scatter(
-    x=[0, max_val], y=[0, max_val],
-    mode="lines",
-    line=dict(dash="dot", color="grey", width=1),
-    name="RMSE = MAE (référence)",
-    hoverinfo="skip",
+fig_compare.add_trace(go.Bar(
+    name="RMSE",
+    y=df_sorted["Catégorie"],
+    x=df_sorted["RMSE"],
+    orientation="h",
+    marker_color="#e99842",
+    hovertemplate="<b>%{y}</b><br>RMSE : %{x:.4f} pts IPC<extra></extra>",
 ))
 
-fig_scatter.update_layout(
-    height=420,
-    xaxis_title="MAE",
-    yaxis_title="RMSE",
+fig_compare.update_layout(
+    barmode="group",
+    height=500,
+    xaxis_title="Erreur (pts IPC)",
+    yaxis_title="",
     plot_bgcolor="white",
     xaxis=dict(gridcolor="#f0f0f0"),
-    yaxis=dict(gridcolor="#f0f0f0"),
-    showlegend=True,
-    legend=dict(orientation="h", y=-0.2),
+    yaxis=dict(gridcolor="#f0f0f0", automargin=True),
+    legend=dict(orientation="h", y=-0.15),
+    margin=dict(l=10),
 )
-st.plotly_chart(fig_scatter, use_container_width=True)
+
+st.plotly_chart(fig_compare, use_container_width=True)
 
 # =============================================================================
 # Tableau complet des métriques
