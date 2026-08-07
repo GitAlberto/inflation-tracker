@@ -132,6 +132,18 @@ Kanban et backlog : `docs/kanban.md`, board Jira.
 
 ---
 
+## C17 — Interface utilisateur Streamlit
+
+| Fichier | Ce que ça montre |
+|---|---|
+| `C17_streamlit_main.png` | Page d'accueil `localhost:8501` : statut API data (8001) OK + API modèle (8002) OK, KPIs IPC 2022-2025, pipeline 5 sources → PostgreSQL → API → Streamlit. |
+| `C17_streamlit_analyse_historique.png` | Page Analyse Historique : courbe IPC FR INSEE 2015→2025 (00-Ensemble), filtres source / catégories (max 5) / période. Statistiques descriptives : Min=98.86, Max=122.13, Moyenne=108.20, N=132 pts. |
+| `C17_streamlit_analyse_categorie.png` | Page Analyse Catégorie : IPC 01-Alimentation — Valeur actuelle=135.46, Variation totale=+35.92 pts, Max=135.73 (2025-08). Courbe rouge vs indice général (pointillé), divergence post-2022 visible. |
+| `C17_streamlit_predictions.png` | Page Prédictions : Prophet 00-Ensemble, horizon 12 mois. Historique réel (bleu) + prédiction (vert) + IC 80%. IPC prédit mois 1=120.92, mois 12=121.90, variation=+0.98 pts. MAE=0.2624, RMSE=0.3233, MAPE=0.22%. |
+| `C17_streamlit_metriques_modele.png` | Page Métriques Modèle : MAE médiane=1.2657 pts IPC, MAPE médiane=1.08%, meilleure MAE=0.2624 (00-Ensemble), plus élevée=4.8327 (04-Logement). Barres MAE par catégorie, seuil alerte=5 pts. |
+
+---
+
 ## C19 — Conteneurisation Docker
 
 | Fichier | Ce que ça montre |
@@ -150,7 +162,7 @@ Kanban et backlog : `docs/kanban.md`, board Jira.
 | `C21_incident_CI_pr57_echec.png` | CI échoue sur PR #57 (feat C8/C14/...) : 2 failing (CI modèle ×2), cause racine — tests attendaient 13 catégories, modèle n'en entraîne que 12. |
 | `C21_CI_pr57_relance_fix.png` | Relance CI après commit correctif `fix(C12/C13): test_list_available 13→12` : 4 checks in progress, retour à la normale. |
 
-Postmortems complets : `docs/incident_2026-07-18.md`, `docs/incident_2026-07-25.md`.
+Postmortems complets : `docs/incidents_postmortem.md`.
 
 ---
 

@@ -219,7 +219,7 @@ with col3:
     )
 
 # =============================================================================
-# Tableau détaillé des prédictions
+# Tableau détaillé des prédictions — juste après les KPIs
 # =============================================================================
 
 with st.expander("📋 Tableau des prédictions (valeurs numériques)"):
@@ -228,5 +228,170 @@ with st.expander("📋 Tableau des prédictions (valeurs numériques)"):
     df_display["yhat"]       = df_display["yhat"].round(2)
     df_display["yhat_lower"] = df_display["yhat_lower"].round(2)
     df_display["yhat_upper"] = df_display["yhat_upper"].round(2)
-    df_display.columns      = ["Date", "IPC prédit", "IC bas (80%)", "IC haut (80%)"]
+    df_display.columns       = ["Date", "IPC prédit", "IC bas (80%)", "IC haut (80%)"]
     st.dataframe(df_display, use_container_width=True, hide_index=True)
+
+# =============================================================================
+# Simulateur budgétaire — conversion IPC → €
+# =============================================================================
+
+def _simuler_budget(
+    montant: float,
+    indice_actuel: float,
+    indice_predit: float,
+    indice_lower: float,
+    indice_upper: float,
+) -> dict:
+    """Convertit les indices IPC en variation budgétaire en euros.
+
+    Formule : montant × (indice_prédit / indice_actuel).
+    La base de référence (2015 ou 2025) s'annule dans le ratio — seule
+    la variation relative compte. Les deux indices doivent venir de la
+    même source pour que la base soit identique.
+    """
+    ratio = indice_predit / indice_actuel
+    futur = round(montant * ratio)
+    return {
+        "futur": futur,
+        "min":   round(montant * (indice_lower / indice_actuel)),
+        "max":   round(montant * (indice_upper / indice_actuel)),
+        "delta": futur - round(montant),
+    }
+
+
+st.divider()
+st.subheader("💶 Simulateur budgétaire")
+st.caption(
+    "Estimez l'impact concret de l'inflation sur votre budget mensuel "
+    "selon les prédictions Prophet."
+)
+
+# --- 3 inputs sur une seule ligne ---
+SIM_HORIZONS = [3, 6, 12, 18, 24, 36]
+
+col_in1, col_in2, col_in3 = st.columns(3)
+
+with col_in1:
+    montant = st.number_input(
+        "Montant actuel (€/mois)",
+        min_value=1,
+        max_value=10_000,
+        value=300,
+        step=10,
+        key="sim_montant",
+    )
+
+with col_in2:
+    sim_categorie = st.selectbox(
+        "Catégorie IPC",
+        cats,
+        index=cats.index(categorie) if categorie in cats else 0,
+        key="sim_categorie",
+    )
+
+with col_in3:
+    sim_horizon = st.selectbox(
+        "Budget dans X mois",
+        options=SIM_HORIZONS,
+        index=SIM_HORIZONS.index(12),
+        key="sim_horizon",
+        format_func=lambda x: f"{x} mois",
+    )
+
+# --- Chargement des données pour la catégorie du simulateur (cached) ---
+df_hist_sim = _load_historique(sim_categorie)
+pred_sim    = _load_predictions(sim_categorie, horizon=sim_horizon)
+
+if pred_sim is None or df_hist_sim.empty:
+    st.warning("Données indisponibles pour la catégorie sélectionnée.")
+else:
+    df_pred_sim = pd.DataFrame(pred_sim["predictions"])
+    df_pred_sim["date_pred"] = pd.to_datetime(df_pred_sim["date_pred"])
+
+    indice_actuel = float(df_hist_sim["valeur"].iloc[-1])
+    indice_predit = float(df_pred_sim["yhat"].iloc[-1])
+    indice_lower  = float(df_pred_sim["yhat_lower"].iloc[-1])
+    indice_upper  = float(df_pred_sim["yhat_upper"].iloc[-1])
+    date_ref      = df_hist_sim["date_obs"].iloc[-1].strftime("%Y-%m")
+
+    sim = _simuler_budget(montant, indice_actuel, indice_predit, indice_lower, indice_upper)
+    # pct calculé sur le ratio IPC exact — pas sur les budgets arrondis
+    # (arrondir 79.28 → 79 € sur un budget de 80 € fausserait le % de 0.3 pts)
+    pct = (indice_predit / indice_actuel - 1) * 100
+    delta_ipc = indice_predit - indice_actuel
+
+    # 5 KPIs : IPC actuel → IPC prédit → Budget actuel → Variation % → Budget dans X mois
+    col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
+    with col_s1:
+        st.metric(
+            f"IPC actuel ({date_ref})",
+            f"{indice_actuel:.2f} pts",
+            help="Dernière valeur réelle connue (INSEE, base 100 = 2015)",
+        )
+    with col_s2:
+        st.metric(
+            f"IPC prédit ({sim_horizon} mois)",
+            f"{indice_predit:.2f} pts",
+            delta=f"{delta_ipc:+.2f} pts",
+            delta_color="inverse",
+            help="Valeur centrale Prophet à l'horizon choisi",
+        )
+    with col_s3:
+        st.metric("Budget actuel", f"{round(montant)} €")
+    with col_s4:
+        st.metric(
+            "Variation estimée",
+            f"{pct:+.1f} %",
+            delta_color="inverse",
+        )
+    with col_s5:
+        st.metric(
+            f"Budget dans {sim_horizon} mois",
+            f"{sim['futur']} €",
+            delta=f"{sim['delta']:+d} €/mois",
+            delta_color="inverse",
+        )
+
+    st.caption(
+        f"Fourchette IC 80 % : entre **{sim['min']} €** et **{sim['max']} €**"
+    )
+
+    # Variables stockées pour la section explicative ci-dessous
+    _ipc_ref      = indice_actuel
+    _ipc_label    = sim_categorie
+    _delta_ipc    = delta_ipc
+    _sim_horizon  = sim_horizon
+
+# =============================================================================
+# Impact concret selon votre budget — basé sur la prédiction en cours
+# =============================================================================
+
+st.divider()
+try:
+    pct_predit = _delta_ipc / _ipc_ref * 100
+    with st.expander("💡 Qu'est-ce que ça représente concrètement ?"):
+        st.markdown(
+            f"Prophet prédit **{_delta_ipc:+.2f} pts IPC** sur *{_ipc_label}* "
+            f"dans **{_sim_horizon} mois**, soit une hausse de **{pct_predit:.1f} %**."
+        )
+        hausse_mois  = round(montant * (_delta_ipc / _ipc_ref))
+        hausse_total = hausse_mois * _sim_horizon
+        mot          = "hausse" if hausse_mois >= 0 else "baisse"
+        abs_mois     = abs(hausse_mois)
+        abs_total    = abs(hausse_total)
+
+        st.markdown(
+            f"Pour votre budget de **{round(montant)} €/mois**, "
+            f"cette prédiction représente une **{mot} de {abs_mois} €/mois**, "
+            f"soit **{abs_total} € sur les {_sim_horizon} mois**."
+        )
+        ipc_fin      = _ipc_ref + _delta_ipc
+        budget_futur = round(montant * ipc_fin / _ipc_ref)
+        st.caption(
+            f"Calcul : budget futur = {round(montant)} € × ({ipc_fin:.2f} / {_ipc_ref:.2f}) "
+            f"= {budget_futur} € → "
+            f"{mot} = {budget_futur} − {round(montant)} "
+            f"= {hausse_mois:+d} €/mois"
+        )
+except NameError:
+    pass  # données simulateur non disponibles — section masquée
