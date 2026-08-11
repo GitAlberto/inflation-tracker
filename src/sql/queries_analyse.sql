@@ -4,42 +4,40 @@
 -- Ces requêtes produisent des indicateurs statistiques et des analyses
 -- comparatives à partir de inflation_unified. Elles sont conçues pour
 -- répondre à des questions métier : quelle catégorie a le plus augmenté ?
--- quelle différence entre France et Allemagne ? quand l'inflation a-t-elle
--- culminé ?
 -- =============================================================================
 
 
 -- -----------------------------------------------------------------------------
--- A1 — Inflation moyenne annuelle par pays (EUROSTAT) — 2020 à 2024
--- Agrégation : moyenne de toutes les catégories COICOP par pays et par an
+-- A1 — Inflation moyenne annuelle France (EUROSTAT) — 2020 à 2024
+-- Agrégation : moyenne de toutes les catégories COICOP par an
 -- -----------------------------------------------------------------------------
 SELECT
-    pays,
     EXTRACT(YEAR FROM date_obs)::INT    AS annee,
     ROUND(AVG(valeur), 2)               AS inflation_moy_pct,
     COUNT(DISTINCT categorie)           AS nb_categories
 FROM inflation_unified
 WHERE source   = 'EUROSTAT'
+  AND pays     = 'FR'
   AND date_obs BETWEEN '2020-01-01' AND '2024-12-31'
-GROUP BY pays, annee
-ORDER BY pays, annee;
+GROUP BY annee
+ORDER BY annee;
 
-
+-- 13 = 12 catégories + 1 indice d'ensemble (00).
 -- -----------------------------------------------------------------------------
--- A2 — Pic d'inflation : année et valeur maximale par pays (EUROSTAT)
--- Identifie l'année où l'inflation a culminé dans chaque pays
+-- A2 — Pic d'inflation France : année et valeur maximale (EUROSTAT)
+-- Identifie l'année où l'inflation a culminé en France
 -- -----------------------------------------------------------------------------
 SELECT
-    pays,
     EXTRACT(YEAR FROM date_obs)::INT AS annee_pic,
     ROUND(MAX(valeur), 2)            AS inflation_max_pct
 FROM inflation_unified
 WHERE source = 'EUROSTAT'
-GROUP BY pays, EXTRACT(YEAR FROM date_obs)
+  AND pays   = 'FR'
+GROUP BY EXTRACT(YEAR FROM date_obs)
 HAVING MAX(valeur) = (
     SELECT MAX(valeur)
     FROM inflation_unified i2
-    WHERE i2.pays = inflation_unified.pays
+    WHERE i2.pays   = 'FR'
       AND i2.source = 'EUROSTAT'
 )
 ORDER BY inflation_max_pct DESC;
@@ -64,17 +62,16 @@ LIMIT 10;
 
 
 -- -----------------------------------------------------------------------------
--- A4 — Comparaison France / Allemagne / Zone Euro (ECB) — 2020 à 2025
--- Évolution mensuelle côte à côte pour les 3 zones économiques clés
+-- A4 — France vs Zone Euro (ECB) — 2020 à 2025
+-- Évolution mensuelle côte à côte : France et zone euro (U2)
 -- -----------------------------------------------------------------------------
 SELECT
     date_obs,
     MAX(CASE WHEN pays = 'FR' THEN valeur END) AS france,
-    MAX(CASE WHEN pays = 'DE' THEN valeur END) AS allemagne,
     MAX(CASE WHEN pays = 'U2' THEN valeur END) AS zone_euro
 FROM inflation_unified
 WHERE source   = 'ECB'
-  AND pays     IN ('FR', 'DE', 'U2')
+  AND pays     IN ('FR', 'U2')
   AND categorie = '000000'
   AND date_obs BETWEEN '2020-01-01' AND '2025-12-31'
 GROUP BY date_obs
@@ -82,21 +79,21 @@ ORDER BY date_obs;
 
 
 -- -----------------------------------------------------------------------------
--- A5 — Volatilité de l'inflation par pays (écart-type)
--- Les pays avec le plus grand écart-type ont eu l'inflation la plus instable
+-- A5 — Volatilité de l'inflation France par catégorie (écart-type)
+-- Les catégories avec le plus grand écart-type ont eu l'inflation la plus instable
 -- -----------------------------------------------------------------------------
 SELECT
-    pays,
+    categorie,
     ROUND(AVG(valeur), 2)    AS inflation_moy,
     ROUND(STDDEV(valeur), 2) AS ecart_type,
     ROUND(MIN(valeur), 2)    AS min_pct,
     ROUND(MAX(valeur), 2)    AS max_pct
 FROM inflation_unified
 WHERE source   = 'EUROSTAT'
+  AND pays     = 'FR'
   AND date_obs BETWEEN '2020-01-01' AND '2024-12-31'
-GROUP BY pays
-ORDER BY ecart_type DESC
-LIMIT 15;
+GROUP BY categorie
+ORDER BY ecart_type DESC;
 
 
 -- -----------------------------------------------------------------------------
@@ -150,24 +147,24 @@ GROUP BY i.categorie;
 
 
 -- -----------------------------------------------------------------------------
--- A8 — Nombre de mois consécutifs d'inflation > 5% par pays (EUROSTAT)
--- Indicateur de durée de la crise inflationniste 2021-2023
+-- A8 — Nombre de mois d'inflation > 5% France par catégorie (EUROSTAT)
+-- Indicateur de durée de la crise inflationniste 2021-2023 par secteur
 -- -----------------------------------------------------------------------------
 WITH mois_hauts AS (
     SELECT
-        pays,
+        categorie,
         date_obs,
         ROUND(AVG(valeur), 2) AS inflation_moy,
         CASE WHEN AVG(valeur) > 5 THEN 1 ELSE 0 END AS above_5pct
     FROM inflation_unified
     WHERE source = 'EUROSTAT'
-    GROUP BY pays, date_obs
+      AND pays   = 'FR'
+    GROUP BY categorie, date_obs
 )
 SELECT
-    pays,
+    categorie,
     COUNT(*) FILTER (WHERE above_5pct = 1) AS nb_mois_inflation_sup_5pct,
     ROUND(MAX(inflation_moy), 2)           AS pic_inflation
 FROM mois_hauts
-GROUP BY pays
-ORDER BY nb_mois_inflation_sup_5pct DESC
-LIMIT 15;
+GROUP BY categorie
+ORDER BY nb_mois_inflation_sup_5pct DESC;

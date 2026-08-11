@@ -99,8 +99,9 @@ def load_historical(categorie: str) -> pd.DataFrame:
 
 def print_metrics_table(metrics: dict) -> None:
     """Affiche le tableau des métriques par catégorie dans le terminal."""
+    n = len(metrics)
     print("\n" + "=" * 70)
-    print("MÉTRIQUES C8 — Prophet IPC France × 13 catégories (eval 2025)")
+    print(f"MÉTRIQUES C8 — Prophet IPC France × {n} catégories (eval 2025)")
     print("=" * 70)
     print(f"{'Catégorie':40} {'MAE':>8} {'RMSE':>8} {'MAPE%':>7}")
     print("-" * 70)
@@ -113,10 +114,11 @@ def print_metrics_table(metrics: dict) -> None:
 
     # Calcul des moyennes pour résumé global
     maes  = [m["MAE"]      for m in metrics.values()]
+    rmses = [m["RMSE"]     for m in metrics.values()]
     mapes = [m["MAPE_pct"] for m in metrics.values()]
 
     print("-" * 70)
-    print(f"{'Moyenne (13 catégories)':40} {sum(maes)/len(maes):>8.4f}            {sum(mapes)/len(mapes):>6.2f}%")
+    print(f"{'Moyenne (' + str(n) + ' catégories)':40} {sum(maes)/n:>8.4f} {sum(rmses)/n:>8.4f} {sum(mapes)/n:>6.2f}%")
     print("=" * 70)
 
 

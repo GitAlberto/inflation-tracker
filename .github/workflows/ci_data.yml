@@ -28,9 +28,30 @@ jobs:
       - name: Install dependencies
         run: |
           pip install fastapi uvicorn pydantic sqlalchemy psycopg2-binary \
-                      python-dotenv httpx pytest pytest-cov
+                      python-dotenv httpx pandas requests pytest pytest-cov
 
-      # 4 — Tests API data
+      # 4a — Tests collecteur ETL CSV (transform pure pandas, sans réseau ni DB)
+      - name: Run ETL collector tests (C12)
+        run: |
+          pytest tests/test_collect.py -v \
+            --cov=src/collect \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-collect.xml
+        env:
+          CI: "true"
+
+      # 4b — Tests pipeline agrégation SQL (constantes et structure, sans DB)
+      - name: Run aggregation pipeline tests (C12)
+        run: |
+          pytest tests/test_aggregate.py -v \
+            --cov=src/aggregate \
+            --cov-report=term-missing \
+            --cov-append \
+            --cov-report=xml:coverage-aggregate.xml
+        env:
+          CI: "true"
+
+      # 4c — Tests API data
       # En CI (CI=true) : seuls health + validations passent (requires_db tests skippés)
       # Les tests DB nécessitent une base peuplée — exécution complète en local uniquement
       - name: Run data API tests (C12)
@@ -38,6 +59,7 @@ jobs:
           pytest tests/test_api.py -v \
             --cov=api/data \
             --cov-report=term-missing \
+            --cov-append \
             --cov-report=xml:coverage-api-data.xml
         env:
           CI: "true"                         # active les skipif requires_db
