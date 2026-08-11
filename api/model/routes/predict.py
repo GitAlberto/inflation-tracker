@@ -142,9 +142,9 @@ def predict_toutes(
     ] = 12,
 ):
     """
-    Retourne les prédictions Prophet sur N mois pour les 13 catégories IPC France.
+    Retourne les prédictions Prophet sur N mois pour les 12 catégories IPC France.
 
-    Peut prendre quelques secondes (chargement de 13 modèles .pkl).
+    Peut prendre quelques secondes (chargement de 12 modèles .pkl).
     """
     try:
         results = predict_all(horizon=horizon)   # dict {categorie: DataFrame}
@@ -196,7 +196,7 @@ def get_categories():
 )
 def get_metrics():
     """
-    Retourne les métriques MAE/RMSE/MAPE d'évaluation (split 2025) pour les 13 catégories.
+    Retourne les métriques MAE/RMSE/MAPE d'évaluation (split 2025) pour les 12 catégories.
 
     Source : `model/metrics.json` généré par `model/train.py`.
     """

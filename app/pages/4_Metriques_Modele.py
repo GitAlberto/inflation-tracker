@@ -27,7 +27,7 @@ st.set_page_config(page_title="Métriques Modèle", page_icon="📈", layout="wi
 inject_theme()
 
 st.title("📈 Métriques du Modèle Prophet")
-st.caption("Évaluation honnête — split train 2020-2024 / eval 2025 (12 mois held-out) · 13 catégories INSEE")
+st.caption("Évaluation honnête — split train 2020-2024 / eval 2025 (12 mois held-out) · 12 catégories INSEE")
 
 # =============================================================================
 # Statut API en sidebar

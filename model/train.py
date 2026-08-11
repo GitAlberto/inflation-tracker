@@ -173,7 +173,7 @@ def load_series(engine) -> dict[str, pd.DataFrame]:
     """
     log.info("Chargement des séries INSEE depuis inflation_unified...")
 
-    # Sélection des 13 catégories IPC France (source=INSEE uniquement)
+    # Sélection des 12 catégories IPC France (source=INSEE uniquement)
     with engine.connect() as conn:
         df = pd.read_sql(
             text("""
@@ -310,9 +310,9 @@ def clean_old_models() -> None:
 # =============================================================================
 
 def main() -> None:
-    """Entraîne Prophet sur les 13 catégories INSEE et sauvegarde modèles + métriques."""
+    """Entraîne Prophet sur les 12 catégories INSEE et sauvegarde modèles + métriques."""
     log.info("=" * 60)
-    log.info("DEBUT ENTRAINEMENT C8 — Prophet × 13 catégories INSEE")
+    log.info("DEBUT ENTRAINEMENT C8 — Prophet × 12 catégories INSEE")
     log.info("=" * 60)
 
     # Nettoyage des anciens .pkl et metrics.json avant tout réentraînement

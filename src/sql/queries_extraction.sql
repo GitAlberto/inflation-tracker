@@ -63,7 +63,7 @@ LIMIT 20;
 
 -- -----------------------------------------------------------------------------
 -- Q4 — Séries temporelles INSEE — catégorie alimentation — 2020 à 2025
--- 13 idbanks disponibles, ici on filtre sur la catégorie alimentation
+-- 12 catégories disponibles, ici on filtre sur la catégorie alimentation
 -- -----------------------------------------------------------------------------
 SELECT
     date_obs,
@@ -90,8 +90,8 @@ ORDER BY categorie, prix_unitaire;
 
 
 -- -----------------------------------------------------------------------------
--- Q6 — Données ECB — HICP France vs Allemagne — catégorie alimentaire (010000)
--- Comparaison directe des taux d'inflation alimentaire entre les deux pays
+-- Q6 — Données ECB — HICP France — catégorie alimentaire (010000)
+-- Évolution du taux d'inflation alimentaire France selon la BCE
 -- -----------------------------------------------------------------------------
 SELECT
     time_period,
@@ -99,13 +99,13 @@ SELECT
     coicop,
     obs_value   AS taux_inflation_pct
 FROM ecb_hicp_raw
-WHERE ref_area IN ('FR', 'DE')
-  AND coicop    = '010000'
-ORDER BY time_period, ref_area;
+WHERE ref_area = 'FR'
+  AND coicop   = '010000'
+ORDER BY time_period;
 
 
 -- -----------------------------------------------------------------------------
--- Q7 — Extraction complète pour une période et un pays depuis inflation_unified
+-- Q7 — Extraction complète France depuis inflation_unified — 2023-2024
 -- Requête type pour alimenter un graphique ou un export
 -- -----------------------------------------------------------------------------
 SELECT
@@ -115,7 +115,7 @@ SELECT
     valeur,
     source
 FROM inflation_unified
-WHERE pays     = 'DE'
+WHERE pays     = 'FR'
   AND source   = 'EUROSTAT'
   AND date_obs BETWEEN '2023-01-01' AND '2024-12-31'
 ORDER BY date_obs, categorie

@@ -185,7 +185,7 @@ def test_predict_categorie_invalide():
 
 @requires_models
 def test_predict_toutes():
-    """GET /predict doit retourner un dict avec les 13 catégories."""
+    """GET /predict doit retourner un dict avec les 12 catégories COICOP standard."""
     resp = client.get("/api/predict")
     assert resp.status_code == 200
     data = resp.json()

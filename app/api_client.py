@@ -161,7 +161,7 @@ def predict_all(horizon: int = 12) -> dict | None:
         horizon : nombre de mois à prédire
 
     Returns:
-        dict {categorie: PredictionResponse} pour les 13 catégories
+        dict {categorie: PredictionResponse} pour les 12 catégories
         ou None si l'API est indisponible
     """
     try:

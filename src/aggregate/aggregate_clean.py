@@ -7,10 +7,10 @@ données). Il consolide les 4 sources d'indices en une table unifiée, normalis�
 et exploitable par les étapes suivantes (API C5, modèle Prophet C8, Grafana C9).
 
 Sources agrégées (4 sur 5 — openfoodfacts exclu) :
-    ECB       → ecb_hicp_raw    — HICP zone euro, taux de variation annuel
-    INSEE     → insee_ipc        — IPC France base 2015, indices mensuels
-    DATAGOUV  → datagouv_ipc    — IPC France séries longues (depuis 1996)
-    EUROSTAT  → eurostat_bulk   — HICP 27 pays UE, taux annuel (3.5M lignes)
+    ECB       → ecb_hicp_raw    — HICP zone euro, indices base 2015=100
+    INSEE     → insee_ipc        — IPC France base 2015=100, indices mensuels
+    DATAGOUV  → datagouv_ipc    — IPC France séries longues, base 2025=100 (rebasé INSEE depuis 2025)
+    EUROSTAT  → eurostat_bulk   — HICP 27 pays UE, indices base 2015=100 (unit=I15)
 
 Pourquoi openfoodfacts est exclu :
     La table openfoodfacts contient des prix en euros (€) relevés en rayon,
@@ -25,7 +25,7 @@ Table cible : inflation_unified (voir src/database/schema.sql)
     categorie : VARCHAR(100) NOT NULL       — code COICOP ou libellé catégorie
     valeur    : NUMERIC(10,4) NOT NULL      — valeur de l'indice ou taux
     source    : VARCHAR(50) NOT NULL        — "ECB", "INSEE", "DATAGOUV", "EUROSTAT"
-    base_ref  : VARCHAR(4) NOT NULL         — année de la base de référence : '2015' (INSEE/ECB/EUROSTAT) ou '2025' (DATAGOUV rebasé 2025)
+    base_ref  : VARCHAR(4) NOT NULL         — base de l'indice : '2015' pour INSEE/ECB/EUROSTAT, '2025' pour DATAGOUV (rebasé par INSEE depuis 2025)
     UNIQUE (date_obs, pays, categorie, source)
 
 Stratégie d'insertion :
