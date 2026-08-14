@@ -60,7 +60,7 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 # override=True : les valeurs du .env écrasent les variables système éventuelles
-load_dotenv(dotenv_path=ENV_PATH, override=True)
+load_dotenv(dotenv_path=ENV_PATH, override=False)
 
 # -----------------------------------------------------------------------------
 # Purge des variables d'environnement PostgreSQL système (PG*)
