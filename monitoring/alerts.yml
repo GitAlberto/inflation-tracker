@@ -61,3 +61,35 @@ groups:
           description: >
             Prometheus n'a reçu aucune métrique de l'API modèle depuis 5 minutes.
             Vérifier que uvicorn tourne sur le port 8002.
+
+  - name: inflation_tracker_data
+    # Règles d'alertes pour l'API data (C20 — monitoring applicatif)
+    rules:
+
+      # Alerte 5 — API data inaccessible
+      - alert: APIDataIndisponible
+        expr: absent(inflation_data_requests_total)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API data inaccessible"
+          description: >
+            Prometheus n'a reçu aucune métrique de l'API data depuis 5 minutes.
+            Vérifier que uvicorn tourne sur le port 8001.
+
+      # Alerte 6 — Taux d'erreurs 500 API data élevé
+      - alert: TauxErreurs500APIData
+        expr: >
+          rate(inflation_data_errors_total{error_type="server_error"}[5m])
+          /
+          (rate(inflation_data_requests_total[5m]) + 0.001)
+          > 0.05
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d'erreurs 500 API data > 5%"
+          description: >
+            Le taux d'erreurs serveur de l'API data est {{ $value | printf "%.1%%" }}.
+            Vérifier les logs uvicorn et la connexion PostgreSQL.

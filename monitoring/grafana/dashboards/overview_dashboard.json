@@ -1,11 +1,11 @@
 {
   "__inputs": [],
   "__requires": [
-    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "grafana",    "id": "grafana",    "name": "Grafana",    "version": "10.0.0" },
     { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
   ],
   "annotations": { "list": [] },
-  "description": "Dashboard C20 — Vue d'ensemble système inflation-tracker (santé services + usage prédictions)",
+  "description": "Dashboard C20 — Monitoring applicatif inflation-tracker : API data + API modèle côte à côte",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -15,8 +15,8 @@
 
     {
       "id": 1,
-      "title": "API modèle",
-      "description": "Disponibilité du service de prédiction Prophet",
+      "title": "API data — Disponibilité",
+      "description": "UP = Prometheus scrape api_data:8001 avec succès",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
       "options": {
@@ -24,7 +24,7 @@
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "center",
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "fieldConfig": {
         "defaults": {
@@ -33,12 +33,57 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
+              { "color": "red",   "value": null },
               { "color": "green", "value": 1 }
             ]
           },
           "mappings": [
-            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+            { "type": "value", "options": {
+              "0": { "text": "DOWN", "color": "red"   },
+              "1": { "text": "UP",   "color": "green" }
+            }}
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "up{job=\"inflation_data_api\"}",
+          "legendFormat": "API data",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "id": 2,
+      "title": "API modèle — Disponibilité",
+      "description": "UP = Prometheus scrape api_model:8002 avec succès",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            { "type": "value", "options": {
+              "0": { "text": "DOWN", "color": "red"   },
+              "1": { "text": "UP",   "color": "green" }
+            }}
           ]
         }
       },
@@ -53,38 +98,9 @@
     },
 
     {
-      "id": 2,
-      "title": "Prédictions générées",
-      "description": "Nombre total de prédictions Prophet servies depuis le démarrage",
-      "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "center"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": { "mode": "palette-classic" },
-          "thresholds": { "mode": "absolute", "steps": [] }
-        }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(inflation_predictions_total)",
-          "legendFormat": "Total",
-          "refId": "A"
-        }
-      ]
-    },
-
-    {
       "id": 3,
-      "title": "Latence médiane (P50)",
-      "description": "Temps de réponse médian des prédictions Prophet sur 5 min",
+      "title": "API data — Requêtes/s",
+      "description": "Débit de requêtes reçues par l'API data sur 1 minute",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
       "options": {
@@ -95,14 +111,13 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
+          "unit": "reqps",
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.5 },
-              { "color": "red", "value": 2 }
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 0.001 }
             ]
           }
         }
@@ -110,8 +125,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(inflation_prediction_latency_seconds_bucket[5m])) by (le))",
-          "legendFormat": "P50",
+          "expr": "sum(rate(inflation_data_requests_total[1m]))",
+          "legendFormat": "req/s",
           "refId": "A"
         }
       ]
@@ -119,8 +134,8 @@
 
     {
       "id": 4,
-      "title": "Latence P95",
-      "description": "95e percentile du temps de réponse des prédictions sur 5 min",
+      "title": "API modèle — Requêtes/s",
+      "description": "Débit de requêtes reçues par l'API modèle sur 1 minute",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
       "options": {
@@ -131,14 +146,13 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
+          "unit": "reqps",
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1 },
-              { "color": "red", "value": 3 }
+              { "color": "blue",  "value": null },
+              { "color": "green", "value": 0.001 }
             ]
           }
         }
@@ -146,8 +160,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(inflation_prediction_latency_seconds_bucket[5m])) by (le))",
-          "legendFormat": "P95",
+          "expr": "sum(rate(inflation_api_requests_total[1m]))",
+          "legendFormat": "req/s",
           "refId": "A"
         }
       ]
@@ -155,36 +169,32 @@
 
     {
       "id": 5,
-      "title": "Volume de prédictions — évolution temporelle",
-      "description": "Taux de prédictions générées par minute (rate sur 5 min)",
+      "title": "API data — Latence P50 / P95",
+      "description": "Percentiles de latence des requêtes API data sur 5 minutes",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 15,
-            "spanNulls": false
-          },
-          "color": { "mode": "palette-classic" }
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 8, "drawStyle": "line", "spanNulls": false }
         }
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(inflation_predictions_total[5m])) * 60",
-          "legendFormat": "Prédictions / min",
+          "expr": "histogram_quantile(0.50, rate(inflation_data_request_latency_seconds_bucket[5m]))",
+          "legendFormat": "P50",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(inflation_api_requests_total{status_code=\"200\"}[5m])) * 60",
-          "legendFormat": "Requêtes 200 / min",
+          "expr": "histogram_quantile(0.95, rate(inflation_data_request_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
           "refId": "B"
         }
       ]
@@ -192,59 +202,96 @@
 
     {
       "id": 6,
-      "title": "Catégories les plus demandées",
-      "description": "Classement des catégories COICOP par nombre de prédictions générées",
-      "type": "barchart",
+      "title": "API modèle — Latence P50 / P95",
+      "description": "Percentiles de latence des requêtes API modèle sur 5 minutes",
+      "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
       "options": {
-        "orientation": "horizontal",
-        "groupWidth": 0.7,
-        "barWidth": 0.97,
-        "tooltip": { "mode": "single" },
-        "legend": { "displayMode": "hidden" },
-        "xTickLabelRotation": 0
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": { "mode": "palette-classic" }
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 8, "drawStyle": "line", "spanNulls": false }
         }
       },
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sort_desc(sum by (categorie) (inflation_predictions_total))",
-          "legendFormat": "{{categorie}}",
+          "expr": "histogram_quantile(0.50, rate(inflation_prediction_latency_seconds_bucket[5m]))",
+          "legendFormat": "P50",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, rate(inflation_prediction_latency_seconds_bucket[5m]))",
+          "legendFormat": "P95",
+          "refId": "B"
         }
       ]
     },
 
     {
       "id": 7,
-      "title": "Performance modèle — MAE par catégorie",
-      "description": "Erreur absolue moyenne (MAE) du modèle Prophet sur 2025 — évaluation post-entraînement",
-      "type": "barchart",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "title": "Taux d'erreurs — API data vs API modèle",
+      "description": "Erreurs 4xx/5xx sur 5 minutes pour les deux services — 'No data' = aucune erreur",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "options": {
-        "orientation": "horizontal",
-        "groupWidth": 0.7,
-        "barWidth": 0.97,
-        "tooltip": { "mode": "single" },
-        "legend": { "displayMode": "hidden" },
-        "xTickLabelRotation": 0
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       },
       "fieldConfig": {
         "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 15, "drawStyle": "line", "spanNulls": false }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(inflation_data_errors_total[5m]))",
+          "legendFormat": "Erreurs API data",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(inflation_api_errors_total[5m]))",
+          "legendFormat": "Erreurs API modèle",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 8,
+      "title": "MAE Prophet par catégorie IPC",
+      "description": "Erreur absolue moyenne du modèle Prophet — alerte si > 5 pts IPC",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "${__field.labels.categorie}",
           "unit": "short",
           "decimals": 3,
+          "min": 0,
+          "max": 6,
           "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.5 },
-              { "color": "red", "value": 1 }
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 1    },
+              { "color": "orange", "value": 2    },
+              { "color": "red",    "value": 5    }
             ]
           }
         }
@@ -252,78 +299,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sort_desc(inflation_prediction_mae)",
+          "expr": "inflation_prediction_mae",
           "legendFormat": "{{categorie}}",
-          "refId": "A"
-        }
-      ]
-    },
-
-    {
-      "id": 8,
-      "title": "Latence des prédictions — distribution temporelle",
-      "description": "Évolution P50 / P95 / P99 du temps de réponse de l'API modèle",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "options": {
-        "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": { "lineWidth": 2, "fillOpacity": 10 },
-          "color": { "mode": "palette-classic" }
-        }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, sum(rate(inflation_prediction_latency_seconds_bucket[5m])) by (le))",
-          "legendFormat": "P50",
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(inflation_prediction_latency_seconds_bucket[5m])) by (le))",
-          "legendFormat": "P95",
-          "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, sum(rate(inflation_prediction_latency_seconds_bucket[5m])) by (le))",
-          "legendFormat": "P99",
-          "refId": "C"
-        }
-      ]
-    },
-
-    {
-      "id": 9,
-      "title": "Erreurs API — évolution temporelle",
-      "description": "Taux d'erreurs 4xx/5xx sur 5 minutes — 'No data' = aucune erreur",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
-      "options": {
-        "tooltip": { "mode": "multi" },
-        "legend": { "displayMode": "list", "placement": "bottom" }
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "lineWidth": 2,
-            "fillOpacity": 20
-          },
-          "color": { "mode": "fixed", "fixedColor": "red" },
-          "thresholds": { "mode": "absolute", "steps": [] }
-        }
-      },
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(inflation_api_errors_total[5m])) * 60",
-          "legendFormat": "Erreurs / min",
           "refId": "A"
         }
       ]
@@ -332,12 +309,12 @@
   ],
   "refresh": "30s",
   "schemaVersion": 38,
-  "tags": ["inflation-tracker", "overview", "C20"],
+  "tags": ["inflation-tracker", "C20", "monitoring-applicatif"],
   "templating": { "list": [] },
-  "time": { "from": "now-3h", "to": "now" },
+  "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "Europe/Paris",
-  "title": "Vue d'ensemble — Inflation Tracker",
+  "title": "Monitoring Applicatif — Inflation Tracker",
   "uid": "inflation-overview",
-  "version": 1
+  "version": 2
 }
