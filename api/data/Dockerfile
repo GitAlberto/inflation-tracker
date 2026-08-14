@@ -19,7 +19,8 @@ RUN pip install --no-cache-dir \
     sqlalchemy \
     psycopg2-binary \
     python-dotenv \
-    pydantic
+    pydantic \
+    prometheus-client
 
 COPY . .
 

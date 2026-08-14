@@ -199,6 +199,75 @@ Automatiser un entraînement Prophet en CI sans CmdStan = impossible. C'est un c
 
 ---
 
+## C19 — Pipeline CD : de git push à la production sans intervention manuelle
+
+### Vue d'ensemble
+
+```
+git push / merge PR → main
+        │
+        ├── GitHub Actions CI (parallèle)       ← validation du code
+        │       ├── ci_model.yml  (17 tests Prophet)
+        │       ├── ci_app.yml    (lint Streamlit)
+        │       └── ci_data.yml   (19 tests API data)
+        │
+        └── Railway CD (parallèle)              ← livraison en production
+                ├── détecte le push via webhook GitHub
+                ├── lit app/Dockerfile  → build image Streamlit
+                ├── lit api/model/Dockerfile → build image API modèle
+                └── déploie les 3 services (app + api-data + api-model)
+```
+
+### Déclenchement
+
+Un seul événement déclenche TOUT : **le merge sur `main`**.
+- GitHub Actions CI démarre immédiatement (validation)
+- Railway détecte le push via son webhook GitHub (déploiement)
+- Aucune commande manuelle, aucun script à lancer
+
+### Packaging : les Dockerfiles
+
+| Service | Dockerfile | Image base | Commande de démarrage |
+|---|---|---|---|
+| Streamlit app | `app/Dockerfile` | python:3.12-slim | `streamlit run app/main.py --server.port=8501` |
+| API modèle | `api/model/Dockerfile` | python:3.12-slim | `uvicorn api.model.main:app --port 8002` |
+| API data | `api/data/Dockerfile` | python:3.12-slim | `uvicorn api.data.main:app --port 8001` |
+
+Railway lit directement ces fichiers depuis le repo GitHub — aucun registre Docker externe nécessaire.
+
+### Orchestration : local vs production
+
+| | Local (dev) | Production (Railway) |
+|---|---|---|
+| Outil | `docker-compose.yml` | Railway (PaaS) |
+| Services | 5 (app + api-data + api-model + postgres + pgadmin) | 4 (app + api-data + api-model + Postgres managé) |
+| Réseau | bridge Docker interne | réseau privé `.railway.internal` |
+| Base de données | PostgreSQL conteneurisé (port 5432) | PostgreSQL Railway managé |
+| Démarrage | `docker compose up` | automatique au push |
+
+### Réseau privé Railway (production)
+
+Les 3 services communiquent via le réseau interne Railway — jamais par internet public :
+
+```
+inflation-tracker-app
+    → http://inflation-tracker-api-data.railway.internal:8001
+    → http://inflation-tracker-api-model.railway.internal:8002
+
+inflation-tracker-api-data
+    → postgres.railway.internal:5432
+```
+
+Avantage : latence faible, pas exposé publiquement, pas de coût réseau supplémentaire.
+
+### Ce qui reste manuel
+
+- Réentraînement Prophet (`python model/train.py`) — CmdStan incompatible CI
+- Commit des `.pkl` après réentraînement
+- ETL (`python src/database/import_data.py --env-file .env_prod`) — données métier, pas du code
+
+---
+
 ## C18/C19 — Comment CI et CD fonctionnent ensemble dans le projet
 
 ### Le flux complet
@@ -252,4 +321,4 @@ Railway est connecté au repo GitHub. À chaque push sur `main` :
 
 - Réentraînement Prophet (`python model/train.py`) — CmdStan incompatible CI
 - Commit des `.pkl` après réentraînement
-- Déploiement des APIs data et modèle (pas connectées à Railway dans la config actuelle)
+- ETL (`python src/database/import_data.py --env-file .env_prod`) — données métier, pas du code

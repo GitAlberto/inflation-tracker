@@ -12,10 +12,15 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
-  # API modèle Prophet (C9/C11) — métriques sur /metrics-prometheus
-  # host.docker.internal = localhost vu depuis le container Docker
-  - job_name: "inflation_model_api"
-    metrics_path: "/metrics-prometheus"   # endpoint Prometheus dédié (≠ /api/metrics ML)
+  # API data REST (C20) — métriques applicatives
+  - job_name: "inflation_data_api"
+    metrics_path: "/metrics-prometheus"
     static_configs:
-      - targets: ["host.docker.internal:8002"]
+      - targets: ["api_data:8001"]
+
+  # API modèle Prophet (C11) — métriques modèle + prédictions
+  - job_name: "inflation_model_api"
+    metrics_path: "/metrics-prometheus"
+    static_configs:
+      - targets: ["api_model:8002"]
 

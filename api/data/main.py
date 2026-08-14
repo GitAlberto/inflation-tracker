@@ -24,14 +24,36 @@ Issue GitHub : #11 (C5 — exposition API données)
 =============================================================================
 """
 
-from fastapi import FastAPI
+import time
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from prometheus_client import Counter, Histogram, CONTENT_TYPE_LATEST, generate_latest
 
 load_dotenv()  # charge .env avant tout — garantit que API_KEY est disponible dès le démarrage
 
 from api.data.routes.inflation import router as inflation_router
 from api.data.routes.prix import router as prix_router
+
+# =============================================================================
+# Métriques Prometheus — C20 monitoring applicatif
+# =============================================================================
+data_requests_total = Counter(
+    "inflation_data_requests_total",
+    "Nombre total de requêtes HTTP reçues par l'API data",
+    ["method", "endpoint", "status_code"],
+)
+data_request_latency_seconds = Histogram(
+    "inflation_data_request_latency_seconds",
+    "Latence des requêtes HTTP de l'API data en secondes",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0],
+)
+data_errors_total = Counter(
+    "inflation_data_errors_total",
+    "Nombre d'erreurs API data par type d'erreur",
+    ["error_type"],
+)
 
 app = FastAPI(
     title="Inflation Tracker — API Données",
@@ -80,7 +102,55 @@ app.include_router(inflation_router, prefix="/api")
 app.include_router(prix_router, prefix="/api")
 
 
+# =============================================================================
+# Middleware HTTP — latence + comptage + erreurs (C20)
+# =============================================================================
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    duration = time.perf_counter() - start_time
+
+    path = request.url.path
+    if path == "/api/inflation":
+        endpoint_label = "/api/inflation"
+    elif path.startswith("/api/inflation/"):
+        endpoint_label = "/api/inflation/{sub}"
+    elif path == "/api/prix-alimentaires":
+        endpoint_label = "/api/prix-alimentaires"
+    elif path.startswith("/api/prix-alimentaires/"):
+        endpoint_label = "/api/prix-alimentaires/{sub}"
+    else:
+        endpoint_label = path
+
+    data_requests_total.labels(
+        method=request.method,
+        endpoint=endpoint_label,
+        status_code=str(response.status_code),
+    ).inc()
+
+    if path.startswith("/api/"):
+        data_request_latency_seconds.observe(duration)
+
+    if response.status_code >= 500:
+        data_errors_total.labels(error_type="server_error").inc()
+    elif response.status_code == 404 and path.startswith("/api/"):
+        data_errors_total.labels(error_type="not_found").inc()
+    elif response.status_code == 422:
+        data_errors_total.labels(error_type="validation").inc()
+    elif response.status_code == 403:
+        data_errors_total.labels(error_type="unauthorized").inc()
+
+    return response
+
+
 @app.get("/health", tags=["health"])
 def health():
     """Vérification que l'API est opérationnelle."""
     return {"status": "ok", "service": "inflation-tracker-api-data", "version": "1.0.0"}
+
+
+@app.get("/metrics-prometheus", include_in_schema=False, tags=["monitoring"])
+def metrics_prometheus():
+    """Endpoint scrapé par Prometheus — métriques applicatives C20."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
