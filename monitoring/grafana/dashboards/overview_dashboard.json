@@ -17,68 +17,66 @@
       "id": 1,
       "title": "API data — Disponibilité",
       "type": "stat",
-      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "textMode": "value_and_name"
-      },
+      "gridPos": { "h": 5, "w": 3, "x": 0, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "justifyMode": "center", "textMode": "value_and_name" },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "green", "value": 1 }
-          ]},
-          "mappings": [{ "type": "value", "options": {
-            "0": { "text": "DOWN", "color": "red" },
-            "1": { "text": "UP",   "color": "green" }
-          }}]
+          "unit": "short", "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]},
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" }}}]
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "up{job=\"inflation_data_api\"}",
-        "legendFormat": "API data",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(up{job=\"inflation_data_api\"})", "legendFormat": "API data", "refId": "A" }]
     },
 
     {
       "id": 2,
       "title": "API modèle — Disponibilité",
       "type": "stat",
-      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "textMode": "value_and_name"
-      },
+      "gridPos": { "h": 5, "w": 3, "x": 3, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "justifyMode": "center", "textMode": "value_and_name" },
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "red", "value": null },
-            { "color": "green", "value": 1 }
-          ]},
-          "mappings": [{ "type": "value", "options": {
-            "0": { "text": "DOWN", "color": "red" },
-            "1": { "text": "UP",   "color": "green" }
-          }}]
+          "unit": "short", "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]},
+          "mappings": [{ "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" }}}]
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "up{job=\"inflation_model_api\"}",
-        "legendFormat": "API modèle",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(up{job=\"inflation_model_api\"})", "legendFormat": "API modèle", "refId": "A" }]
+    },
+
+    {
+      "id": 14,
+      "title": "API data — Total requêtes",
+      "description": "Nombre total de vraies requêtes métier (endpoints /api/*)",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 6, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "thresholds": { "mode": "absolute", "steps": [] }
+        }
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(inflation_data_requests_total{endpoint=~\"/api/.*\"}) or vector(0)", "legendFormat": "Requêtes", "refId": "A" }]
+    },
+
+    {
+      "id": 15,
+      "title": "API modèle — Total prédictions",
+      "description": "Nombre total de prédictions Prophet générées — cohérent avec le bargauge par catégorie",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 3, "x": 9, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value", "graphMode": "area", "justifyMode": "center" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "decimals": 0,
+          "color": { "mode": "palette-classic" },
+          "thresholds": { "mode": "absolute", "steps": [] }
+        }
+      },
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(inflation_predictions_total) or vector(0)", "legendFormat": "Prédictions", "refId": "A" }]
     },
 
     {
@@ -86,30 +84,16 @@
       "title": "API data — Req/s",
       "description": "Débit de requêtes sur 1 minute",
       "type": "stat",
-      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "center"
-      },
+      "gridPos": { "h": 5, "w": 3, "x": 12, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center" },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "decimals": 3,
+          "unit": "reqps", "decimals": 3,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "blue",  "value": null },
-            { "color": "green", "value": 0.001 }
-          ]}
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 0.001 }]}
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(inflation_data_requests_total[1m])) or vector(0)",
-        "legendFormat": "req/s",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(inflation_data_requests_total[1m])) or vector(0)", "legendFormat": "req/s", "refId": "A" }]
     },
 
     {
@@ -117,94 +101,50 @@
       "title": "API modèle — Req/s",
       "description": "Débit de requêtes sur 1 minute",
       "type": "stat",
-      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "center"
-      },
+      "gridPos": { "h": 5, "w": 3, "x": 15, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "area", "justifyMode": "center" },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "decimals": 3,
+          "unit": "reqps", "decimals": 3,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "blue",  "value": null },
-            { "color": "green", "value": 0.001 }
-          ]}
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }, { "color": "green", "value": 0.001 }]}
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum(rate(inflation_api_requests_total[1m])) or vector(0)",
-        "legendFormat": "req/s",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(inflation_api_requests_total[1m])) or vector(0)", "legendFormat": "req/s", "refId": "A" }]
     },
 
     {
       "id": 5,
       "title": "API data — Taux d'erreurs",
-      "description": "% requêtes en erreur sur 5 min — 0% = aucune erreur",
+      "description": "% requêtes en erreur sur 5 min",
       "type": "stat",
-      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
+      "gridPos": { "h": 5, "w": 3, "x": 18, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "justifyMode": "center" },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
-          "decimals": 1,
+          "unit": "percent", "decimals": 1,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 2 },
-            { "color": "red",    "value": 5 }
-          ]}
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2 }, { "color": "red", "value": 5 }]}
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "(sum(rate(inflation_data_errors_total[5m])) or vector(0)) / (sum(rate(inflation_data_requests_total[5m])) + 0.001) * 100",
-        "legendFormat": "Erreurs %",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "(sum(rate(inflation_data_errors_total[5m])) or vector(0)) / (sum(rate(inflation_data_requests_total[5m])) + 0.001) * 100", "legendFormat": "Erreurs %", "refId": "A" }]
     },
 
     {
       "id": 6,
       "title": "API modèle — Taux d'erreurs",
-      "description": "% requêtes en erreur sur 5 min — 0% = aucune erreur",
+      "description": "% requêtes en erreur sur 5 min",
       "type": "stat",
-      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
-      "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "center"
-      },
+      "gridPos": { "h": 5, "w": 3, "x": 21, "y": 0 },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "justifyMode": "center" },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent",
-          "decimals": 1,
+          "unit": "percent", "decimals": 1,
           "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [
-            { "color": "green",  "value": null },
-            { "color": "yellow", "value": 2 },
-            { "color": "red",    "value": 5 }
-          ]}
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 2 }, { "color": "red", "value": 5 }]}
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "(sum(rate(inflation_api_errors_total[5m])) or vector(0)) / (sum(rate(inflation_api_requests_total[5m])) + 0.001) * 100",
-        "legendFormat": "Erreurs %",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "(sum(rate(inflation_api_errors_total[5m])) or vector(0)) / (sum(rate(inflation_api_requests_total[5m])) + 0.001) * 100", "legendFormat": "Erreurs %", "refId": "A" }]
     },
 
     {
@@ -213,33 +153,14 @@
       "description": "Percentiles de latence sur 5 minutes",
       "type": "timeseries",
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
-      "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
-      },
+      "options": { "tooltip": { "mode": "multi", "sort": "none" }, "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } },
       "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 8, "drawStyle": "line", "spanNulls": false }
-        }
+        "defaults": { "unit": "s", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 8, "drawStyle": "line", "spanNulls": false } }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, rate(inflation_data_request_latency_seconds_bucket[5m]))",
-          "legendFormat": "P50", "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, rate(inflation_data_request_latency_seconds_bucket[5m]))",
-          "legendFormat": "P95", "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, rate(inflation_data_request_latency_seconds_bucket[5m]))",
-          "legendFormat": "P99", "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.50, sum by (le) (rate(inflation_data_request_latency_seconds_bucket[5m])))", "legendFormat": "P50", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(inflation_data_request_latency_seconds_bucket[5m])))", "legendFormat": "P95", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(inflation_data_request_latency_seconds_bucket[5m])))", "legendFormat": "P99", "refId": "C" }
       ]
     },
 
@@ -249,33 +170,14 @@
       "description": "Percentiles de latence des prédictions sur 5 minutes",
       "type": "timeseries",
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
-      "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
-      },
+      "options": { "tooltip": { "mode": "multi", "sort": "none" }, "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } },
       "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 8, "drawStyle": "line", "spanNulls": false }
-        }
+        "defaults": { "unit": "s", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 8, "drawStyle": "line", "spanNulls": false } }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.50, rate(inflation_prediction_latency_seconds_bucket[5m]))",
-          "legendFormat": "P50", "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, rate(inflation_prediction_latency_seconds_bucket[5m]))",
-          "legendFormat": "P95", "refId": "B"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.99, rate(inflation_prediction_latency_seconds_bucket[5m]))",
-          "legendFormat": "P99", "refId": "C"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.50, sum by (le) (rate(inflation_prediction_latency_seconds_bucket[5m])))", "legendFormat": "P50", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(inflation_prediction_latency_seconds_bucket[5m])))", "legendFormat": "P95", "refId": "B" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(inflation_prediction_latency_seconds_bucket[5m])))", "legendFormat": "P99", "refId": "C" }
       ]
     },
 
@@ -285,23 +187,11 @@
       "description": "Débit par route API data sur 5 minutes",
       "type": "timeseries",
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 14 },
-      "options": {
-        "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
-      },
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } },
       "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 10, "drawStyle": "line", "spanNulls": false }
-        }
+        "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10, "drawStyle": "line", "spanNulls": false } }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sum by (endpoint) (rate(inflation_data_requests_total[5m]))",
-        "legendFormat": "{{endpoint}}",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (endpoint) (rate(inflation_data_requests_total{endpoint!~\"/metrics-prometheus|/health\"}[5m]))", "legendFormat": "{{endpoint}}", "refId": "A" }]
     },
 
     {
@@ -310,27 +200,13 @@
       "description": "Taux d'erreurs API data + API modèle par type sur 5 min — 'No data' = aucune erreur",
       "type": "timeseries",
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 14 },
-      "options": {
-        "tooltip": { "mode": "multi" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
-      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } },
       "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "custom": { "lineWidth": 2, "fillOpacity": 15, "drawStyle": "line", "spanNulls": false }
-        }
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 15, "drawStyle": "line", "spanNulls": false } }
       },
       "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (error_type) (rate(inflation_data_errors_total[5m]))",
-          "legendFormat": "data — {{error_type}}", "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum by (error_type) (rate(inflation_api_errors_total[5m]))",
-          "legendFormat": "modèle — {{error_type}}", "refId": "B"
-        }
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (error_type) (rate(inflation_data_errors_total[5m]))", "legendFormat": "data — {{error_type}}", "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (error_type) (rate(inflation_api_errors_total[5m]))", "legendFormat": "modèle — {{error_type}}", "refId": "B" }
       ]
     },
 
@@ -340,51 +216,29 @@
       "description": "Débit de prédictions générées par catégorie COICOP sur 5 minutes",
       "type": "timeseries",
       "gridPos": { "h": 9, "w": 12, "x": 0, "y": 23 },
-      "options": {
-        "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
-      },
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true } },
       "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "color": { "mode": "palette-classic" },
-          "custom": { "lineWidth": 2, "fillOpacity": 10, "drawStyle": "line", "spanNulls": false }
-        }
+        "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10, "drawStyle": "line", "spanNulls": false } }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "rate(inflation_predictions_total[5m])",
-        "legendFormat": "{{categorie}}",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (categorie) (rate(inflation_predictions_total[5m]))", "legendFormat": "{{categorie}}", "refId": "A" }]
     },
 
     {
       "id": 12,
-      "title": "Top endpoints API data (total cumulé)",
-      "description": "Routes les plus appelées depuis le démarrage du service",
+      "title": "Prédictions par catégorie COICOP (total cumulé)",
+      "description": "Nombre total de prédictions Prophet générées par catégorie depuis le démarrage",
       "type": "bargauge",
       "gridPos": { "h": 9, "w": 12, "x": 12, "y": 23 },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "showUnfilled": true
-      },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"] }, "showUnfilled": true },
       "fieldConfig": {
         "defaults": {
-          "displayName": "${__field.labels.endpoint}",
+          "displayName": "${__field.labels.categorie}",
           "unit": "short",
           "color": { "mode": "palette-classic" },
           "thresholds": { "mode": "absolute", "steps": [] }
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sort_desc(sum by (endpoint) (inflation_data_requests_total))",
-        "legendFormat": "{{endpoint}}",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sort_desc(sum by (categorie) (inflation_predictions_total))", "legendFormat": "{{categorie}}", "refId": "A" }]
     },
 
     {
@@ -393,34 +247,21 @@
       "description": "Erreur absolue moyenne du modèle Prophet — alerte automatique si > 5 pts IPC (alerts.yml)",
       "type": "bargauge",
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 32 },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["lastNotNull"] },
-        "showUnfilled": true
-      },
+      "options": { "displayMode": "gradient", "orientation": "horizontal", "reduceOptions": { "calcs": ["lastNotNull"] }, "showUnfilled": true },
       "fieldConfig": {
         "defaults": {
           "displayName": "${__field.labels.categorie}",
-          "unit": "short",
-          "decimals": 3,
-          "min": 0,
-          "max": 6,
+          "unit": "short", "decimals": 3, "min": 0, "max": 6,
           "color": { "mode": "thresholds" },
           "thresholds": { "mode": "absolute", "steps": [
             { "color": "green",  "value": null },
-            { "color": "yellow", "value": 1    },
-            { "color": "orange", "value": 2    },
-            { "color": "red",    "value": 5    }
+            { "color": "yellow", "value": 1 },
+            { "color": "orange", "value": 2 },
+            { "color": "red",    "value": 5 }
           ]}
         }
       },
-      "targets": [{
-        "datasource": { "type": "prometheus", "uid": "prometheus" },
-        "expr": "sort_desc(inflation_prediction_mae)",
-        "legendFormat": "{{categorie}}",
-        "refId": "A"
-      }]
+      "targets": [{ "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max by (categorie) (inflation_prediction_mae)", "legendFormat": "{{categorie}}", "refId": "A" }]
     }
 
   ],
@@ -433,5 +274,5 @@
   "timezone": "Europe/Paris",
   "title": "Monitoring Applicatif — Inflation Tracker",
   "uid": "inflation-overview",
-  "version": 3
+  "version": 4
 }
