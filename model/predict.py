@@ -32,6 +32,10 @@ from prophet import Prophet     # nécessaire pour désérialiser les .pkl
 ROOT      = Path(__file__).parent.parent
 MODEL_DIR = Path(__file__).parent   # dossier contenant les .pkl et metrics.json
 
+# Cache mémoire : modèles chargés une seule fois depuis le disque, réutilisés ensuite.
+# joblib.load(.pkl) prend 1-3s — après mise en cache, <10ms par prédiction.
+_MODEL_CACHE: dict[str, Prophet] = {}
+
 
 # =============================================================================
 # Utilitaires
@@ -50,18 +54,21 @@ def slugify(name: str) -> str:
 
 
 def load_model(categorie: str) -> Prophet:
-    """Charge le modèle Prophet sérialisé pour une catégorie donnée.
+    """Charge le modèle Prophet — depuis le cache mémoire si disponible, sinon depuis le .pkl.
 
     Args:
         categorie : nom exact de la catégorie (ex: '00 - Ensemble')
 
     Returns:
-        Modèle Prophet chargé depuis le .pkl correspondant
+        Modèle Prophet (lu depuis disque au premier appel, mis en cache ensuite)
 
     Raises:
         FileNotFoundError : si le .pkl n'existe pas (train.py non exécuté)
     """
-    slug       = slugify(categorie)                        # conversion en nom de fichier
+    if categorie in _MODEL_CACHE:
+        return _MODEL_CACHE[categorie]
+
+    slug       = slugify(categorie)
     model_path = MODEL_DIR / f"prophet_{slug}.pkl"
 
     if not model_path.exists():
@@ -70,7 +77,8 @@ def load_model(categorie: str) -> Prophet:
             f"→ Exécutez d'abord : python model/train.py"
         )
 
-    model = joblib.load(model_path)   # désérialisation du modèle Prophet
+    model = joblib.load(model_path)
+    _MODEL_CACHE[categorie] = model
     return model
 
 

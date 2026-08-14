@@ -81,9 +81,22 @@ def _load_historique(categorie):
     return df.sort_values("date_obs")
 
 
-@st.cache_data(ttl=60)   # cache 1 minute — les prédictions sont lentes (chargement .pkl)
+@st.cache_data(ttl=300)
 def _load_predictions(categorie, horizon):
-    """Appelle l'API modèle pour obtenir les prédictions Prophet."""
+    """Prédictions pour le graphique principal — mis en cache 5 min.
+
+    Caché pour éviter un re-appel API parasite à chaque interaction simulateur
+    qui déclenche un rerun complet de la page.
+    """
+    return predict_categorie(categorie, horizon=horizon)
+
+
+def _load_predictions_sim(categorie, horizon):
+    """Prédictions pour le simulateur budgétaire — sans cache.
+
+    Chaque appel génère une vraie requête HTTP vers l'API modèle,
+    correctement comptabilisée dans Prometheus (inflation_predictions_total).
+    """
     return predict_categorie(categorie, horizon=horizon)
 
 
@@ -300,7 +313,7 @@ with col_in3:
 
 # --- Chargement des données pour la catégorie du simulateur (cached) ---
 df_hist_sim = _load_historique(sim_categorie)
-pred_sim    = _load_predictions(sim_categorie, horizon=sim_horizon)
+pred_sim    = _load_predictions_sim(sim_categorie, horizon=sim_horizon)
 
 if pred_sim is None or df_hist_sim.empty:
     st.warning("Données indisponibles pour la catégorie sélectionnée.")
