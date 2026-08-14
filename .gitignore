@@ -15,6 +15,7 @@ env/
 # Environment
 .env
 .env.*
+.env_*
 
 # Données brutes (volumineuses, non versionnées)
 data/raw/**/*

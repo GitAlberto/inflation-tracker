@@ -23,7 +23,9 @@ from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 
 # Header HTTP attendu : X-API-Key: <valeur>
-_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+# auto_error=True : FastAPI rejette automatiquement les requêtes sans header
+# et marque la sécurité comme obligatoire dans Swagger (cadenas fermé par défaut)
+_api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 
 def verify_admin_key(key: str | None = Security(_api_key_header)) -> str:

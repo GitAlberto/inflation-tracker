@@ -84,15 +84,17 @@ st.divider()
 st.subheader("Inflation France — points clés")
 
 # Chargement des données INSEE pour les KPIs annuels
-@st.cache_data(ttl=300)   # cache 5 minutes — évite re-fetch à chaque interaction
+@st.cache_data(ttl=60)   # cache 60s — ne pas bloquer sur un échec de démarrage
 def _load_kpis():
-    """Charge les données IPC Ensemble pour construire les KPIs."""
-    result = get_inflation(
-        pays="FR", source="INSEE",
-        categorie="00",          # catégorie "00 - Ensemble"
-        limit=1000,
-    )
-    if not result or not result["data"]:
+    """Charge les données IPC Ensemble pour construire les KPIs.
+
+    Lève RuntimeError si l'API est indisponible — @st.cache_data ne met PAS
+    en cache les exceptions, donc le prochain rerun retente automatiquement.
+    """
+    result = get_inflation(source="INSEE", categorie="00", limit=1000)
+    if result is None:
+        raise RuntimeError("API data indisponible")
+    if not result["data"]:
         return {}
 
     # Conversion en dict {année: liste de valeurs} pour calculer les moyennes
@@ -105,7 +107,14 @@ def _load_kpis():
     # Calcul de la valeur IPC moyenne par année (proxy de l'indice annuel)
     return {yr: round(sum(v) / len(v), 2) for yr, v in by_year.items()}
 
-kpis = _load_kpis()
+
+try:
+    kpis = _load_kpis()
+except Exception:
+    kpis = {}
+
+if not kpis:
+    st.info("⏳ Données KPI en cours de chargement — rechargez la page dans quelques secondes.")
 
 col1, col2, col3, col4 = st.columns(4)
 

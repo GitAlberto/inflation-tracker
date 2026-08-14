@@ -64,13 +64,12 @@ def test_inflation_sans_filtre_retourne_donnees():
 
 
 @requires_db
-def test_inflation_filtre_pays_source():
-    r = client.get("/api/inflation?pays=FR&source=INSEE&limit=10")
+def test_inflation_filtre_source():
+    r = client.get("/api/inflation?source=INSEE&limit=10")
     assert r.status_code == 200
     body = r.json()
-    assert body["total"] > 0   # volume variable selon l'étendue historique chargée
+    assert body["total"] > 0
     for row in body["data"]:
-        assert row["pays"] == "FR"
         assert row["source"] == "INSEE"
 
 
@@ -85,15 +84,6 @@ def test_inflation_filtre_date():
     assert body["total"] == 1
     assert body["data"][0]["valeur"] == "120.9000"
     assert body["data"][0]["date_obs"] == "2025-12-01"
-
-
-@requires_db
-def test_inflation_pays_inexistant_retourne_vide():
-    r = client.get("/api/inflation?pays=XX&limit=10")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["total"] == 0
-    assert body["data"] == []
 
 
 @requires_db
@@ -118,9 +108,8 @@ def test_inflation_limit_max_1000():
 
 @requires_db
 def test_tendance_retourne_12_points_annee():
-    # Périmètre France uniquement — on utilise FR+INSEE, pas DE+EUROSTAT
     r = client.get(
-        "/api/inflation/tendance?pays=FR&source=INSEE"
+        "/api/inflation/tendance?source=INSEE"
         "&date_debut=2024-01-01&date_fin=2024-12-31"
     )
     assert r.status_code == 200
@@ -136,20 +125,12 @@ def test_tendance_retourne_12_points_annee():
 
 def test_tendance_params_obligatoires():
     r = client.get("/api/inflation/tendance")
-    assert r.status_code == 422  # pays et source obligatoires
+    assert r.status_code == 422  # source obligatoire
 
 
 # =============================================================================
-# /api/inflation/pays — sources — categories
+# /api/inflation/sources — categories
 # =============================================================================
-
-@requires_db
-def test_liste_pays():
-    r = client.get("/api/inflation/pays")
-    assert r.status_code == 200
-    pays = r.json()["pays"]
-    assert "FR" in pays   # périmètre France uniquement — seul pays attendu
-
 
 @requires_db
 def test_liste_sources():
@@ -166,6 +147,73 @@ def test_liste_categories_filtree_par_source():
     cats = r.json()["categories"]
     assert len(cats) == 12  # 12 catégories COICOP normalisées (00-11)
     assert "00 - Ensemble" in cats
+
+
+# =============================================================================
+# /api/inflation/top-categories
+# =============================================================================
+
+@requires_db
+def test_top_categories_retourne_n_resultats():
+    r = client.get("/api/inflation/top-categories?source=EUROSTAT&limit=5")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["source"] == "EUROSTAT"
+    assert body["nb_categories"] == 5
+    assert len(body["data"]) == 5
+    rangs = [row["rang"] for row in body["data"]]
+    assert rangs == [1, 2, 3, 4, 5]
+    # tri décroissant vérifié
+    moyennes = [row["inflation_moy"] for row in body["data"]]
+    assert moyennes == sorted(moyennes, reverse=True)
+
+
+@requires_db
+def test_top_categories_pic_superieur_ou_egal_moy():
+    r = client.get("/api/inflation/top-categories?source=INSEE&limit=3")
+    assert r.status_code == 200
+    for row in r.json()["data"]:
+        assert row["pic"] >= row["inflation_moy"]
+
+
+# =============================================================================
+# /api/inflation/comparaison-sources
+# =============================================================================
+
+def test_comparaison_sources_categorie_obligatoire():
+    r = client.get("/api/inflation/comparaison-sources")
+    assert r.status_code == 422
+
+
+@requires_db
+def test_comparaison_sources_alimentation():
+    r = client.get("/api/inflation/comparaison-sources?categorie=alimentation")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["nb_sources"] > 0
+    sources = [row["source"] for row in body["data"]]
+    assert "INSEE" in sources
+    for row in body["data"]:
+        assert row["valeur_max"] >= row["valeur_moy"] >= row["valeur_min"]
+        assert row["nb_observations"] > 0
+
+
+# =============================================================================
+# /api/inflation/resume
+# =============================================================================
+
+@requires_db
+def test_resume_structure():
+    r = client.get("/api/inflation/resume")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total_observations"] > 0
+    assert body["nb_sources"] == 4
+    assert set(s["source"] for s in body["sources"]) == {"ECB", "INSEE", "DATAGOUV", "EUROSTAT"}
+    ipc = body["derniere_valeur_ipc"]
+    assert ipc["valeur"] is not None
+    assert ipc["source"] == "INSEE"
+    assert ipc["categorie"] == "00 - Ensemble"
 
 
 # =============================================================================

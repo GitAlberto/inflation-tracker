@@ -264,7 +264,7 @@ def train_one(df_cat: pd.DataFrame, categorie: str) -> tuple[Prophet, dict]:
 
     # Calcul des métriques sur les valeurs réelles vs prédites
     metrics = compute_metrics(eval_["y"].values, preds_eval)
-    metrics["n_train"] = len(train)   # nb points d'entraînement (info utile pour le jury)
+    metrics["n_train"] = len(train)   # nb points d'entraînement
     metrics["n_eval"]  = len(eval_)   # nb points d'évaluation
 
     log.info(f"  [{categorie}] eval → MAE={metrics['MAE']} RMSE={metrics['RMSE']} MAPE={metrics['MAPE_pct']}%")

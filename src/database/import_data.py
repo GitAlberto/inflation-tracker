@@ -56,7 +56,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-load_dotenv(dotenv_path=ROOT / ".env", override=True)
+load_dotenv(dotenv_path=ROOT / ".env", override=True)  # surchargé plus bas si --env-file
 
 for _pg_var in ["PGPASSWORD", "PGUSER", "PGHOST", "PGPORT", "PGDATABASE", "PGPASSFILE"]:
     os.environ.pop(_pg_var, None)
@@ -369,7 +369,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Ne pas lancer aggregate_clean.py après la collecte.",
     )
+    parser.add_argument(
+        "--env-file",
+        default=None,
+        metavar="FILE",
+        help="Fichier .env à utiliser (défaut : .env). Ex: --env-file .env_prod",
+    )
     args = parser.parse_args()
+
+    if args.env_file:
+        env_path = Path(args.env_file)
+        if not env_path.exists():
+            log.error(f"Fichier .env introuvable : {env_path}")
+            sys.exit(1)
+        load_dotenv(dotenv_path=env_path, override=True)
+        log.info(f"Variables chargées depuis : {env_path}")
 
     main(
         sources_selectionnees=args.source,
