@@ -51,7 +51,7 @@ from dotenv import load_dotenv
 ROOT     = Path(__file__).parent.parent.parent
 ENV_PATH = ROOT / ".env"
 
-load_dotenv(dotenv_path=ENV_PATH, override=True)
+load_dotenv(dotenv_path=ENV_PATH, override=False)
 
 for _pg_var in ["PGPASSWORD", "PGUSER", "PGHOST", "PGPORT", "PGDATABASE", "PGPASSFILE"]:
     os.environ.pop(_pg_var, None)
