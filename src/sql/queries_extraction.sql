@@ -3,7 +3,11 @@
 -- =============================================================================
 -- Ces requêtes extraient les données brutes depuis les tables sources et la
 -- table unifiée inflation_unified. Elles couvrent les cas d'usage principaux :
--- filtrage par pays, par source, par catégorie et par période.
+-- filtrage par source, par catégorie et par période.
+-- Note : inflation_unified, insee_ipc, datagouv_ipc et eurostat_bulk ne
+-- contiennent que des données France — aucun filtre pays n'est nécessaire
+-- sur ces tables. Seule ecb_hicp_raw est multi-pays (6 pays UE) et nécessite
+-- un filtre ref_area.
 -- =============================================================================
 
 
@@ -26,7 +30,7 @@ ORDER BY nb_lignes DESC;
 
 
 -- -----------------------------------------------------------------------------
--- Q2 — IPC France toutes sources — catégorie "ensemble" — 2024
+-- Q2 — IPC toutes sources — catégorie "ensemble" — 2024
 -- Comparaison des valeurs INSEE vs DATAGOUV sur la même période
 -- -----------------------------------------------------------------------------
 SELECT
@@ -35,8 +39,7 @@ SELECT
     categorie,
     valeur
 FROM inflation_unified
-WHERE pays        = 'FR'
-  AND date_obs BETWEEN '2024-01-01' AND '2024-12-31'
+WHERE date_obs BETWEEN '2024-01-01' AND '2024-12-31'
   AND (
       (source = 'INSEE'    AND categorie ILIKE '%ensemble%')
    OR (source = 'DATAGOUV' AND categorie ILIKE '%ensemble%')
@@ -45,18 +48,17 @@ ORDER BY date_obs, source;
 
 
 -- -----------------------------------------------------------------------------
--- Q3 — Données Eurostat pour la France — toutes catégories — janvier 2024
--- Permet de voir la granularité des 441 catégories COICOP disponibles
+-- Q3 — Données Eurostat — toutes catégories — janvier 2024
+-- Permet de voir la granularité des catégories COICOP disponibles
+-- eurostat_bulk est filtré sur France lors de l'ETL (collect_eurostat_spark.py)
 -- -----------------------------------------------------------------------------
 SELECT
-    pays,
     coicop,
     date_obs,
     valeur,
     unite
 FROM eurostat_bulk
-WHERE pays     = 'FR'
-  AND date_obs = '2024-01-01'
+WHERE date_obs = '2024-01-01'
 ORDER BY coicop
 LIMIT 20;
 
@@ -91,13 +93,13 @@ ORDER BY categorie, prix_unitaire;
 
 -- -----------------------------------------------------------------------------
 -- Q6 — Données ECB — HICP France — catégorie alimentaire (010000)
--- Évolution du taux d'inflation alimentaire France selon la BCE
+-- ecb_hicp_raw est multi-pays (6 pays UE) : le filtre ref_area est obligatoire
 -- -----------------------------------------------------------------------------
 SELECT
     time_period,
     ref_area    AS pays,
     coicop,
-    obs_value   AS taux_inflation_pct
+    obs_value   AS indice_hicp
 FROM ecb_hicp_raw
 WHERE ref_area = 'FR'
   AND coicop   = '010000'
@@ -105,18 +107,16 @@ ORDER BY time_period;
 
 
 -- -----------------------------------------------------------------------------
--- Q7 — Extraction complète France depuis inflation_unified — 2023-2024
+-- Q7 — Extraction complète depuis inflation_unified — 2023-2024
 -- Requête type pour alimenter un graphique ou un export
 -- -----------------------------------------------------------------------------
 SELECT
     date_obs,
-    pays,
     categorie,
     valeur,
     source
 FROM inflation_unified
-WHERE pays     = 'FR'
-  AND source   = 'EUROSTAT'
+WHERE source   = 'EUROSTAT'
   AND date_obs BETWEEN '2023-01-01' AND '2024-12-31'
 ORDER BY date_obs, categorie
 LIMIT 50;
@@ -128,11 +128,28 @@ LIMIT 50;
 -- -----------------------------------------------------------------------------
 SELECT
     source,
-    COUNT(*)         AS nb_lignes,
-    MIN(date_obs)    AS date_debut,
-    MAX(date_obs)    AS date_fin,
-    COUNT(DISTINCT pays)      AS nb_pays,
-    COUNT(DISTINCT categorie) AS nb_categories
+    COUNT(*)                   AS nb_lignes,
+    MIN(date_obs)              AS date_debut,
+    MAX(date_obs)              AS date_fin,
+    COUNT(DISTINCT categorie)  AS nb_categories
 FROM inflation_unified
 GROUP BY source
+ORDER BY source;
+
+
+-- -----------------------------------------------------------------------------
+-- Q9 — Répartition des observations par source et base de référence
+-- base_ref = colonne réelle de inflation_unified ('2015' ou '2025').
+-- DATAGOUV utilise la base 2025, toutes les autres sources la base 2015 —
+-- important pour l'interprétation : 100 ne représente pas la même année.
+-- -----------------------------------------------------------------------------
+SELECT
+    source,
+    base_ref,
+    COUNT(*)                   AS nb_observations,
+    MIN(date_obs)              AS date_debut,
+    MAX(date_obs)              AS date_fin,
+    COUNT(DISTINCT categorie)  AS nb_categories
+FROM inflation_unified
+GROUP BY source, base_ref
 ORDER BY source;

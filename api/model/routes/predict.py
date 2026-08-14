@@ -60,6 +60,29 @@ def _load_metrics() -> dict:
         return json.load(f)   # dict {categorie: {MAE, RMSE, MAPE_pct, n_train, n_eval}}
 
 
+def _resolve_categorie(categorie: str) -> str:
+    """Résout un code court (ex: '00') vers le nom complet ('00 - Ensemble').
+
+    Accepte aussi le nom complet directement.
+    Lève 404 si introuvable, 400 si ambigu.
+    """
+    available = list_available()
+    if categorie in available:
+        return categorie
+    matched = [c for c in available if c.startswith(categorie)]
+    if len(matched) == 1:
+        return matched[0]
+    if len(matched) == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Catégorie '{categorie}' introuvable. Disponibles : {available}",
+        )
+    raise HTTPException(
+        status_code=400,
+        detail=f"Ambiguïté : '{categorie}' correspond à plusieurs catégories : {matched}",
+    )
+
+
 def _df_to_predictions(df, horizon: int, categorie: str) -> PredictionResponse:
     """Convertit le DataFrame predict_one() en PredictionResponse Pydantic."""
     # Conversion ligne par ligne en PredictionPoint
@@ -108,13 +131,8 @@ def predict_categorie(
     - **categorie** : nom exact (ex: `00 - Ensemble`, `01 - Alimentation et boissons non alcoolisées`)
     - **horizon** : nombre de mois (1 à 36, défaut 12)
     """
-    # Vérification que la catégorie a bien un modèle entraîné
-    available = list_available()
-    if categorie not in available:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Catégorie '{categorie}' introuvable. Disponibles : {available}",
-        )
+    # Résolution du code court ou nom complet → nom exact du modèle
+    categorie = _resolve_categorie(categorie)
 
     # Génération des prédictions via model/predict.py
     try:
@@ -222,11 +240,5 @@ def get_metrics_categorie(categorie: str):
     - **categorie** : nom exact de la catégorie (ex: `00 - Ensemble`)
     """
     raw = _load_metrics()   # chargement complet du fichier
-
-    if categorie not in raw:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Catégorie '{categorie}' absente de metrics.json",
-        )
-
+    categorie = _resolve_categorie(categorie)
     return CategoryMetrics(**raw[categorie])   # désérialisation Pydantic
