@@ -28,7 +28,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install fastapi uvicorn pydantic sqlalchemy psycopg2-binary \
-                      python-dotenv httpx pandas requests pytest pytest-cov
+                      python-dotenv httpx pandas requests pytest pytest-cov \
+                      prometheus-client
 
       # 4a — Tests collecteur ETL CSV (transform pure pandas, sans réseau ni DB)
       - name: Run ETL collector tests (C12)
