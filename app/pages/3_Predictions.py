@@ -149,9 +149,12 @@ fig.add_trace(go.Scatter(
     mode="lines+markers",
     line=dict(color="#27ae60", width=2.5),
     marker=dict(size=5),
+    customdata=list(zip(df_pred["yhat_lower"], df_pred["yhat_upper"])),
     hovertemplate=(
         "Date : %{x|%Y-%m}<br>"
         "IPC prédit : %{y:.2f}<br>"
+        "IC 80% — min : %{customdata[0]:.2f}<br>"
+        "IC 80% — max : %{customdata[1]:.2f}<br>"
         "<extra></extra>"
     ),
 ))
