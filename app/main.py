@@ -172,7 +172,7 @@ col_a, col_b = st.columns(2)
 with col_a:
     st.subheader("🗂️ Le projet")
     st.markdown("""
-Le kebab coûtait **5,00 €** en 2019. Il en coûte **7,50 €** en 2025.
+Le kebab coûtait **5,00 €** en 2019. Il en coûte **10,00 €** en 2026.
 
 **Inflation Tracker** agrège 5 sources de données publiques pour rendre
 l'inflation lisible et prédire son évolution par catégorie de produit.
