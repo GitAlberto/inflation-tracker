@@ -261,35 +261,50 @@ def transform(prix_bruts: list[dict]) -> pd.DataFrame:
     log.info("ETAPE 2 — TRANSFORM : normalisation des prix Open Prices")
 
     if not prix_bruts:
+        # Aucun prix scrapé (site indisponible, sélecteurs changés...) — on retourne
+        # un DataFrame vide mais avec les bonnes colonnes, pour ne pas casser
+        # le reste du pipeline (load_to_postgres attend ces colonnes précises)
         log.warning("Aucune donnée à transformer")
         return pd.DataFrame(columns=["produit", "categorie", "prix_unitaire",
                                      "date_collecte", "url"])
 
+    # prix_bruts est une liste de dicts (un par produit scrapé) —
+    # pd.DataFrame() la convertit directement en tableau
     df = pd.DataFrame(prix_bruts)
     log.info(f"Colonnes disponibles : {list(df.columns)}")
 
     # --- Mapping des colonnes ---
+    # .get(clé, Series vide) au lieu de df["clé"] : si l'API Open Prices ne renvoie
+    # pas ce champ pour certains produits, on obtient une colonne de NaN au lieu
+    # d'un KeyError qui ferait planter tout le script
     df["produit"]       = df.get("product_name", pd.Series(dtype=str))
     df["categorie"]     = df.get("category_tag",  pd.Series(dtype=str))
+    # errors="coerce" : un prix mal formé devient NaN plutôt que de lever une exception
     df["prix_unitaire"] = pd.to_numeric(df.get("price", pd.Series(dtype=float)),
                                         errors="coerce")
     df["date_collecte"] = pd.to_datetime(df.get("date", pd.Series(dtype=str)),
                                          errors="coerce").dt.date
 
-    # Construction de l'URL produit depuis le code-barres
+    # Construction de l'URL produit depuis le code-barres — le champ URL n'existe
+    # pas tel quel dans l'API, on le reconstruit à partir de product_code
     df["url"] = df.get("product_code", pd.Series(dtype=str)).apply(
         lambda code: f"https://fr.openfoodfacts.org/produit/{code}" if pd.notna(code) else None
     )
 
     # --- Nettoyage de la catégorie ---
     # Les tags OFF ont le format "en:sweetened-spreads" → on garde "sweetened-spreads"
+    # (le préfixe "en:" indique juste la langue du tag, sans intérêt métier ici)
     df["categorie"] = df["categorie"].astype(str).str.replace(
         r"^[a-z]{2}:", "", regex=True
     )
-    # Valeur par défaut si catégorie manquante
+    # Valeur par défaut si catégorie manquante — évite des NULL en base
+    # et permet de repérer facilement les produits mal catégorisés par OFF
     df["categorie"] = df["categorie"].replace(["nan", "None", ""], "non-classe")
 
     # --- Suppression des prix invalides ---
+    # dropna() élimine les lignes sans prix ou sans date exploitable (issues des
+    # conversions ci-dessus) ; le filtre [0.01€, 500€] écarte les prix aberrants
+    # probablement issus d'erreurs de saisie côté contributeurs Open Prices
     nb_avant = len(df)
     df = df.dropna(subset=["prix_unitaire", "date_collecte"])
     df = df[(df["prix_unitaire"] >= 0.01) & (df["prix_unitaire"] <= 500)]
@@ -298,6 +313,8 @@ def transform(prix_bruts: list[dict]) -> pd.DataFrame:
              f"({nb_avant - nb_apres} supprimées)")
 
     # --- Sélection des colonnes finales ---
+    # Seules ces 5 colonnes correspondent au schéma de la table openfoodfacts —
+    # le reste (colonnes brutes de l'API) est abandonné ici
     df_clean = df[["produit", "categorie", "prix_unitaire", "date_collecte", "url"]].copy()
     df_clean = df_clean.sort_values(["categorie", "date_collecte"]).reset_index(drop=True)
 

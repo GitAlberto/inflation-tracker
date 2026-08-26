@@ -271,6 +271,8 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
     log.info("=" * 60)
     log.info("ETAPE 2 — TRANSFORM : normalisation format long INSEE")
 
+    # Copie défensive du DataFrame brut — df_raw reste intact pour un éventuel
+    # nouveau passage de transform() sans avoir à retélécharger le CSV
     df = df_raw.copy()
 
     # --- Filtre 1 : fréquence mensuelle ---
@@ -358,6 +360,8 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
         )
 
     # --- Renommage des colonnes vers notre convention ---
+    # Après les 6 filtres ci-dessus, il ne reste que des lignes exploitables :
+    # on peut renommer sans risquer de garder des colonnes ambiguës
     df = df.rename(columns={
         "COICOP_2018":  "categorie",    # code COICOP ex: "01.1.3"
         "TIME_PERIOD":  "time_period",  # ex: "2024-01"
@@ -367,6 +371,7 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
 
     # --- Conversion des dates ---
     # TIME_PERIOD mensuel au format "YYYY-MM" → date PostgreSQL (1er du mois)
+    # errors="coerce" : une date mal formée devient NaT au lieu de faire planter le script
     df["date_obs"] = pd.to_datetime(
         df["time_period"].astype(str) + "-01",
         format="%Y-%m-%d",
@@ -374,9 +379,13 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
     )
 
     # --- Conversion des valeurs ---
+    # errors="coerce" : une valeur non numérique résiduelle devient NaN,
+    # éliminée juste après par dropna() plutôt que de faire planter le script
     df["valeur"] = pd.to_numeric(df["valeur"], errors="coerce")
 
     # --- Nettoyage ---
+    # Dernier filet de sécurité : supprime les lignes dont la date ou la valeur
+    # n'a pas pu être convertie proprement (NaT/NaN issus des étapes précédentes)
     nb_avant = len(df)
     df = df.dropna(subset=["date_obs", "valeur", "categorie"])
     nb_apres = len(df)
@@ -384,6 +393,8 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
              f"({nb_avant - nb_apres} supprimées)")
 
     # --- Sélection des colonnes finales ---
+    # On ne garde que les 4 colonnes utiles à la table datagouv_ipc —
+    # le reste (FREQ, UNIT_MEASURE, GEO...) n'a servi qu'au filtrage ci-dessus
     df["source"] = "data.gouv.fr"
     df_clean = df[["date_obs", "valeur", "categorie", "source"]].copy()
     df_clean = df_clean.sort_values(["categorie", "date_obs"]).reset_index(drop=True)
