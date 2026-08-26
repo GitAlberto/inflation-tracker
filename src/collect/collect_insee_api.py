@@ -271,28 +271,42 @@ def transform(xml_brut: str, idbanks: dict[str, str]) -> pd.DataFrame:
     log.info("=" * 60)
     log.info("ETAPE 2 — TRANSFORM : parsing SDMX-XML INSEE")
 
+    # Parse le XML brut en arbre navigable (module standard xml.etree.ElementTree)
     root = ET.fromstring(xml_brut)
 
     rows: list[dict] = []
     nb_series = 0
     nb_obs_ok = 0
     nb_ignores = 0
+    # Attributs de la <Series> en cours de parcours (IDBANK, TITLE_FR...) —
+    # réutilisés pour chaque <Obs> enfant, car ces infos ne sont portées
+    # que par la balise <Series>, pas répétées sur chaque observation
     series_attrs: dict = {}
 
+    # root.iter() parcourt TOUT l'arbre XML à plat (Series et Obs mélangées,
+    # dans l'ordre du document) — on distingue les deux types par leur nom de balise
     for elem in root.iter():
         # Nom local sans namespace (ex : "{urn:sdmx:...}Series" → "Series")
+        # nécessaire car le namespace SDMX est généré dynamiquement par
+        # l'INSEE et change d'un appel à l'autre — on ne peut pas le coder en dur
         local = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
 
         if local == "Series":
+            # Nouvelle série = nouvelle catégorie IPC : on mémorise ses attributs
+            # pour les associer à toutes les <Obs> qui vont suivre dans ce bloc
             series_attrs = dict(elem.attrib)
             nb_series += 1
 
         elif local == "Obs" and series_attrs:
+            # Une observation = une valeur IPC pour un mois donné, rattachée
+            # à la <Series> mémorisée juste avant dans la boucle
             obs_status  = elem.attrib.get("OBS_STATUS", "A")
             obs_value   = elem.attrib.get("OBS_VALUE")
             time_period = elem.attrib.get("TIME_PERIOD")
 
-            # Statuts exclus : M = manquant, L = confidentiel
+            # Statuts exclus : M = manquant (l'INSEE n'a pas pu calculer la valeur),
+            # L = confidentiel (secret statistique) — on écarte aussi les lignes
+            # sans valeur ou sans date, inexploitables
             if obs_status in ("M", "L") or not obs_value or not time_period:
                 nb_ignores += 1
                 continue
@@ -300,14 +314,21 @@ def transform(xml_brut: str, idbanks: dict[str, str]) -> pd.DataFrame:
             idbank = series_attrs.get("IDBANK", "")
             title  = series_attrs.get("TITLE_FR", "")
 
+            # Résout le code technique IDBANK en nom de catégorie lisible :
+            # d'abord via le dictionnaire de correspondance connu (idbanks),
+            # sinon on extrait un libellé depuis le titre complet INSEE
             categorie = idbanks.get(idbank, _short_label(title))
 
             try:
+                # TIME_PERIOD INSEE est au format "YYYY-MM" (pas de jour) —
+                # on force le 1er du mois pour rester cohérent avec le reste du projet
                 date_obs = datetime.strptime(time_period + "-01", "%Y-%m-%d").date()
             except ValueError:
                 nb_ignores += 1
                 continue
 
+            # Ligne finale prête pour la table insee_ipc — une ligne = une
+            # observation IPC (une catégorie, un mois, une valeur)
             rows.append({
                 "date_obs":       date_obs,
                 "valeur":         float(obs_value),

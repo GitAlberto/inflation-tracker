@@ -285,6 +285,8 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     log.info(f"Première colonne renommée : '{premiere_col}' → 'cle_composite'")
 
     # --- Séparation de la clé composite ---
+    # Eurostat encode 4 dimensions dans une seule colonne texte séparée par virgules —
+    # F.split() la découpe en 4 colonnes distinctes et exploitables individuellement
     # Format : "M,I15,CP00,AT" → freq="M", unit="I15", coicop="CP00", geo="AT"
     df_spark = (df_spark
                 .withColumn("freq",   F.split(F.col("cle_composite"), ",")[0])
@@ -303,11 +305,15 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     log.info(f"Filtrage geo=FR : {df_spark.count()} lignes conservées")
 
     # --- Dépivotage (wide → long) avec stack() ---
+    # Le fichier source a une colonne PAR MOIS (format "wide") : une ligne pour
+    # 350 mois donne 350 colonnes de valeurs. On veut une ligne par (mois, valeur)
+    # — c'est ce dépivotage qui multiplie ~800 lignes en ~270 000 lignes exploitables.
     # Les colonnes de dates sont toutes celles sauf freq, unit, coicop, geo
     colonnes_dates = [c for c in df_spark.columns if c not in ("freq", "unit", "coicop", "geo")]
     log.info(f"Colonnes de dates à dépivater : {len(colonnes_dates)} périodes")
 
-    # Construction de l'expression stack() pour PySpark
+    # Construction de l'expression stack() pour PySpark — équivalent Spark SQL
+    # d'un melt/unpivot pandas, mais optimisé pour traiter le volume en distribué
     # stack(N, 'date1', col1, 'date2', col2, ...) → (time_period, obs_value_raw)
     stack_expr = f"stack({len(colonnes_dates)}, " + ", ".join(
         [f"'{c}', `{c}`" for c in colonnes_dates]
@@ -319,8 +325,9 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
     )
 
     # --- Nettoyage de obs_value_raw ---
-    # Les valeurs peuvent contenir des flags qualité : "2.1 p", "3.5 e"
-    # On supprime tout ce qui n'est pas le nombre lui-même
+    # Les valeurs peuvent contenir des flags qualité Eurostat : "2.1 p" (provisoire),
+    # "3.5 e" (estimé) — regexp_replace supprime lettres et espaces pour ne garder
+    # que le nombre, qu'on caste ensuite en double (float)
     df_long = (df_long
                .withColumn("obs_value_str",
                            F.trim(F.regexp_replace(F.col("obs_value_raw"), r"[a-zA-Z\s]+", "")))
@@ -329,6 +336,8 @@ def transform_with_spark(raw_path: Path) -> pd.DataFrame:
                .drop("obs_value_raw", "obs_value_str"))
 
     # --- Suppression des lignes sans valeur ---
+    # Une valeur devient null si la cellule d'origine était ":" (nullValue défini
+    # plus haut) ou si le cast en double a échoué sur un flag qualité imprévu
     nb_avant = df_long.count()
     df_long = df_long.filter(F.col("obs_value").isNotNull())
     nb_apres = df_long.count()

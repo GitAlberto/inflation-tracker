@@ -212,6 +212,8 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
     log.info("=" * 60)
     log.info("ETAPE 2 — TRANSFORM : nettoyage et normalisation")
 
+    # Copie défensive : on ne modifie jamais le DataFrame brut passé en argument,
+    # pour garder une trace intacte de ce que fetch_ecb_hicp() a réellement renvoyé
     df = df_raw.copy()
 
     # Étape 1 : normalisation des noms de colonnes
@@ -230,7 +232,8 @@ def transform(df_raw: pd.DataFrame) -> pd.DataFrame:
     df = df.rename(columns=rename_map)
 
     # Étape 3 : sélection des colonnes qui correspondent à notre table SQL
-    # On filtre uniquement celles qui existent dans le DataFrame (sécurité)
+    # On filtre uniquement celles qui existent dans le DataFrame (sécurité) —
+    # évite un KeyError si l'API ECB ajoute/retire une colonne entre deux versions
     colonnes_cibles   = ["time_period", "obs_value", "ref_area", "coicop", "unit"]
     colonnes_presentes = [c for c in colonnes_cibles if c in df.columns]
     df = df[colonnes_presentes].copy()
